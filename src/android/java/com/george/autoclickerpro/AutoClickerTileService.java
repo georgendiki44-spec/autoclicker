@@ -10,7 +10,13 @@ import android.os.Build;
 public class AutoClickerTileService extends TileService {
     @Override public void onClick() {
         super.onClick();
-        if (!Settings.canDrawOverlays(this)) {
+        if (FloatingOverlayService.active) {
+            stopService(new Intent(this, FloatingOverlayService.class));
+            Tile current = getQsTile();
+            if (current != null) { current.setState(Tile.STATE_INACTIVE); current.updateTile(); }
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + getPackageName()));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -32,7 +38,7 @@ public class AutoClickerTileService extends TileService {
         Tile tile = getQsTile();
         if (tile != null) {
             tile.setLabel("Auto Clicker");
-            tile.setState(Tile.STATE_INACTIVE);
+            tile.setState(FloatingOverlayService.active ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
             tile.updateTile();
         }
     }

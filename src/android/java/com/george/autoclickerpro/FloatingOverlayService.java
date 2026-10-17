@@ -25,6 +25,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class FloatingOverlayService extends Service {
+    public static volatile boolean active = false;
     private WindowManager wm;
     private WindowManager.LayoutParams panelParams, targetParams;
     private LinearLayout panel;
@@ -63,6 +64,7 @@ public class FloatingOverlayService extends Service {
 
     @Override public void onCreate() {
         super.onCreate();
+        active = true;
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel("autoclicker_overlay",
                 "Auto Clicker controls", NotificationManager.IMPORTANCE_LOW);
@@ -145,11 +147,11 @@ public class FloatingOverlayService extends Service {
         LinearLayout settings = new LinearLayout(this);
         settings.setOrientation(LinearLayout.HORIZONTAL);
         intervalInput = new EditText(this);
-        intervalInput.setSingleLine(true); intervalInput.setText("500"); intervalInput.setHint("Interval ms");
+        intervalInput.setSingleLine(true); intervalInput.setInputType(2); intervalInput.setText("500"); intervalInput.setHint("Interval ms");
         intervalInput.setTextColor(Color.WHITE); intervalInput.setHintTextColor(Color.LTGRAY); intervalInput.setTextSize(13);
         intervalInput.setBackground(rounded(Color.rgb(55,58,66)));
         countInput = new EditText(this);
-        countInput.setSingleLine(true); countInput.setText("50"); countInput.setHint("Tap count");
+        countInput.setSingleLine(true); countInput.setInputType(2); countInput.setText("50"); countInput.setHint("Tap count");
         countInput.setTextColor(Color.WHITE); countInput.setHintTextColor(Color.LTGRAY); countInput.setTextSize(13);
         countInput.setBackground(rounded(Color.rgb(55,58,66)));
         settings.addView(intervalInput, new LinearLayout.LayoutParams(0, dp(44), 1));
@@ -169,7 +171,7 @@ public class FloatingOverlayService extends Service {
         row.addView(close, new LinearLayout.LayoutParams(0, dp(48), 0.6f));
         panel.addView(row);
         panelParams = params(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         panelParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         panelParams.y = dp(80);
@@ -205,7 +207,7 @@ public class FloatingOverlayService extends Service {
             running = true; tapCount = 0; handler.removeCallbacks(clickLoop); handler.post(clickLoop);
         });
         stop.setOnClickListener(v -> {
-            running = false; handler.removeCallbacks(clickLoop); status.setText("Stopped • " + tapCount + " taps");
+            running = false; active = false; handler.removeCallbacks(clickLoop); status.setText("Stopped • " + tapCount + " taps");
         });
         close.setOnClickListener(v -> stopSelf());
     }
