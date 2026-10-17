@@ -28,8 +28,8 @@ jobs:
         shell: bash
         run: |
           set +e
-          buildozer -v android debug 2>&1 | tee buildozer-build.log
-          result=${PIPESTATUS[0]}
+          printf 'y\\n' | buildozer -v android debug 2>&1 | tee buildozer-build.log
+          result=${PIPESTATUS[1]}
           if [ "$result" -ne 0 ]; then
             find .buildozer -path '*/dists/*/src/main/AndroidManifest.xml' -type f -exec sh -c 'echo "--- $1"; nl -ba "$1"; python3 -c "import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1]); print(\"Manifest XML valid\")" "$1" || true' sh {} \;
             exit "$result"
