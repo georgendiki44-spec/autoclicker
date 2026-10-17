@@ -21,7 +21,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        // Window contents are not read; this service only dispatches user-requested taps.
+        // This service does not inspect window content; it only dispatches user-requested taps.
     }
 
     @Override
@@ -35,7 +35,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         super.onDestroy();
     }
 
-    public boolean tap(float x, float y, GestureDescription.GestureResultCallback callback) {
+    public boolean tap(float x, float y, AccessibilityService.GestureResultCallback callback) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false;
         Path path = new Path();
         path.moveTo(x, y);
