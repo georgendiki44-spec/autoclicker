@@ -19,6 +19,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -27,6 +29,9 @@ public class FloatingOverlayService extends Service {
     private WindowManager.LayoutParams panelParams, targetParams;
     private LinearLayout panel;
     private TextView status;
+    private EditText intervalInput, countInput;
+    private CheckBox continuous;
+    private int maxTaps = 50;
     private View target;
     private boolean running = false, targetLocked = false;
     private int intervalMs = 500;
@@ -36,6 +41,11 @@ public class FloatingOverlayService extends Service {
     private final Runnable clickLoop = new Runnable() {
         @Override public void run() {
             if (!running) return;
+            if (continuous != null && !continuous.isChecked() && tapCount >= maxTaps) {
+                running = false;
+                status.setText("Complete • " + tapCount + " taps");
+                return;
+            }
             AutoClickerAccessibilityService service = AutoClickerAccessibilityService.getInstance();
             if (service == null) {
                 status.setText("Enable Accessibility service first");
@@ -132,6 +142,21 @@ public class FloatingOverlayService extends Service {
         status.setTextSize(12);
         status.setText("Drag red target onto a button");
         panel.addView(status);
+        LinearLayout settings = new LinearLayout(this);
+        settings.setOrientation(LinearLayout.HORIZONTAL);
+        intervalInput = new EditText(this);
+        intervalInput.setSingleLine(true); intervalInput.setText("500"); intervalInput.setHint("Interval ms");
+        intervalInput.setTextColor(Color.WHITE); intervalInput.setHintTextColor(Color.LTGRAY); intervalInput.setTextSize(13);
+        intervalInput.setBackground(rounded(Color.rgb(55,58,66)));
+        countInput = new EditText(this);
+        countInput.setSingleLine(true); countInput.setText("50"); countInput.setHint("Tap count");
+        countInput.setTextColor(Color.WHITE); countInput.setHintTextColor(Color.LTGRAY); countInput.setTextSize(13);
+        countInput.setBackground(rounded(Color.rgb(55,58,66)));
+        settings.addView(intervalInput, new LinearLayout.LayoutParams(0, dp(44), 1));
+        settings.addView(countInput, new LinearLayout.LayoutParams(0, dp(44), 1));
+        panel.addView(settings);
+        continuous = new CheckBox(this); continuous.setText("Continuous clicking"); continuous.setTextColor(Color.WHITE);
+        panel.addView(continuous);
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         Button move = new Button(this); move.setText("Lock target");
@@ -170,6 +195,12 @@ public class FloatingOverlayService extends Service {
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(i);
                 return;
+            }
+            try {
+                intervalMs = Math.max(80, Integer.parseInt(intervalInput.getText().toString().trim()));
+                maxTaps = Math.max(1, Integer.parseInt(countInput.getText().toString().trim()));
+            } catch (Exception ex) {
+                status.setText("Enter a valid interval and tap count"); return;
             }
             running = true; tapCount = 0; handler.removeCallbacks(clickLoop); handler.post(clickLoop);
         });
