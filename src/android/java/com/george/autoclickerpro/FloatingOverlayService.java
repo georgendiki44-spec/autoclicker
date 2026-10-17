@@ -231,7 +231,7 @@ public class FloatingOverlayService extends Service {
             running = true; tapCount = 0; handler.removeCallbacks(clickLoop); handler.post(clickLoop);
         });
         stop.setOnClickListener(v -> {
-            running = false; active = false; handler.removeCallbacks(clickLoop); status.setText("Stopped • " + tapCount + " taps");
+            running = false; handler.removeCallbacks(clickLoop); status.setText("Stopped • " + tapCount + " taps");
         });
         close.setOnClickListener(v -> stopSelf());
     }
