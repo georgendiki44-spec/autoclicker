@@ -24,6 +24,11 @@ jobs:
         run: |
           python3 -c "import xml.etree.ElementTree as E; E.fromstring('<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">'+open('src/android/extra_manifest.xml').read()+'</manifest>'); E.fromstring('<application xmlns:android=\"http://schemas.android.com/apk/res/android\">'+open('src/android/extra_manifest_application_arguments.xml').read()+'</application>'); E.parse('src/android/res/xml/autoclicker_accessibility_service.xml'); print('Android XML fragments are well-formed')"
 
+      - name: Prepare native manifest hook
+        run: |
+          sed -i '/^android.extra_manifest_application_arguments = /d' buildozer.spec
+          grep -q '^p4a.hook = ' buildozer.spec || sed -i '/^p4a.branch = develop/a p4a.hook = src/android/p4a_hook.py' buildozer.spec
+
       - name: Build APK
         shell: bash
         run: |
