@@ -37,7 +37,7 @@ source.exclude_dirs = .buildozer, .venv, bin, __pycache__, .git
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.1
+version = 0.2
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -106,7 +106,7 @@ fullscreen = 0
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
-android.permissions = android.permission.VIBRATE
+android.permissions = android.permission.VIBRATE, android.permission.SYSTEM_ALERT_WINDOW, android.permission.FOREGROUND_SERVICE
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host
@@ -155,7 +155,7 @@ android.accept_sdk_license = True
 
 # (str) Extra xml to write directly inside the <manifest> element of AndroidManifest.xml
 # use that parameter to provide a filename from where to load your custom XML code
-#android.extra_manifest_xml = ./src/android/extra_manifest.xml
+android.extra_manifest_xml = src/android/extra_manifest.xml
 
 # (str) Extra xml to write directly inside the <manifest><application> tag of AndroidManifest.xml
 # use that parameter to provide a filename from where to load your custom XML arguments:
@@ -188,7 +188,7 @@ android.accept_sdk_license = True
 
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
-#android.add_src =
+android.add_src = src/android/java
 
 # (list) Android AAR archives to add
 #android.add_aars =
@@ -250,7 +250,7 @@ android.accept_sdk_license = True
 #android.manifest.intent_filters =
 
 # (list) Copy these files to src/main/res/xml/ (used for example with intent-filters)
-#android.res_xml = PATH_TO_FILE,
+android.res_xml = src/android/res/xml/autoclicker_accessibility_service.xml
 
 # (str) launchMode to set for the main activity
 #android.manifest.launch_mode = standard
