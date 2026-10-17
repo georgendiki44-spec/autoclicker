@@ -22,7 +22,12 @@ try:
 except ImportError:
     pag = None
 
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "clickmaster_settings.json")
+def get_config_path():
+    """Return a writable per-user settings path on desktop and Android."""
+    app = App.get_running_app()
+    base_dir = app.user_data_dir if app is not None else os.path.dirname(os.path.abspath(__file__))
+    os.makedirs(base_dir, exist_ok=True)
+    return os.path.join(base_dir, "clickmaster_settings.json")
 
 KV = """
 <AutoClickerRoot>:
@@ -267,9 +272,9 @@ class AutoClickerApp(App):
         self.wifi_enabled = False
 
     def build(self):
-        self.root_widget = AutoClickerRoot()
+        # Register the KV class rule, then instantiate the actual root widget.
         Builder.load_string(KV)
-        self.root_widget = Builder.load_string(KV)
+        self.root_widget = AutoClickerRoot()
         self.bind_widgets()
         self.load_settings()
         self.configure_android()
@@ -294,7 +299,15 @@ class AutoClickerApp(App):
         instance.text = 'ON' if self.infinite_mode else 'OFF'
 
     def on_toggle_click_type(self, instance):
-        self.current_pattern = 'single' if instance.text == 'Single' else 'double' if instance.text == 'Double' else 'press'
+        # This is a single button, so cycle through the supported patterns.
+        patterns = [('single', 'Single'), ('double', 'Double'), ('press', 'Press')]
+        current_index = next(
+            (index for index, (pattern, _) in enumerate(patterns)
+             if pattern == self.current_pattern),
+            0,
+        )
+        self.current_pattern, instance.text = patterns[(current_index + 1) % len(patterns)]
+        instance.state = 'down'
 
     def configure_android(self):
         try:
@@ -328,15 +341,22 @@ class AutoClickerApp(App):
             'click_type': self.current_pattern,
             'target': [self.target_x, self.target_y],
         }
-        with open(CONFIG_PATH, 'w', encoding='utf-8') as fh:
-            json.dump(payload, fh)
+        try:
+            with open(get_config_path(), 'w', encoding='utf-8') as fh:
+                json.dump(payload, fh)
+        except (OSError, TypeError, ValueError) as exc:
+            self.set_status(f'Could not save settings: {exc}', (1, 0.3, 0.3, 1))
+            return
         self.show_status('Settings saved')
 
     def load_settings(self):
         try:
-            with open(CONFIG_PATH, 'r', encoding='utf-8') as fh:
+            with open(get_config_path(), 'r', encoding='utf-8') as fh:
                 payload = json.load(fh)
         except FileNotFoundError:
+            return
+        except (OSError, json.JSONDecodeError) as exc:
+            self.set_status(f'Could not load settings: {exc}', (1, 0.3, 0.3, 1))
             return
 
         self.taps_input.text = str(payload.get('taps', 50))
