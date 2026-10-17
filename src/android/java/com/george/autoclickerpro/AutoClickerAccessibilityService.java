@@ -36,7 +36,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     }
 
     public boolean tap(float x, float y, GestureDescription.GestureResultCallback callback) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !isServiceConnected()) return false;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false;
         Path path = new Path();
         path.moveTo(x, y);
         GestureDescription gesture = new GestureDescription.Builder()
