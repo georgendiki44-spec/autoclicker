@@ -58,7 +58,7 @@ public class FloatingOverlayService extends Service {
             float tapX = loc[0] + target.getWidth() / 2f;
             float tapY = loc[1] + target.getHeight() / 2f;
             boolean dispatched = service.tap(tapX, tapY,
-                new android.accessibilityservice.GestureDescription.GestureResultCallback() {
+                new android.accessibilityservice.AccessibilityService.GestureResultCallback() {
                     @Override public void onCompleted(
                             android.accessibilityservice.GestureDescription gestureDescription) {
                         if (running && status != null) {
