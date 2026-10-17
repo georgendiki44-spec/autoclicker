@@ -18,6 +18,9 @@ jobs:
       - name: Remove stale Buildozer state
         run: rm -rf .buildozer
 
+      - name: Validate Python syntax
+        run: python3 -m py_compile main.py clickmaster.py
+
       - name: Build APK
         run: |
           printf 'y\n' | buildozer android debug

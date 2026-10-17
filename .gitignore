@@ -11,3 +11,4 @@ bin/
 .idea/
 .vscode/
 *.log
+clickmaster_settings.json

@@ -20,6 +20,9 @@ source.dir = .
 # (list) Source files to include (leave empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas
 
+# Keep local build environments and generated files out of the Android package.
+source.exclude_dirs = .buildozer, .venv, bin, __pycache__, .git
+
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png
 
