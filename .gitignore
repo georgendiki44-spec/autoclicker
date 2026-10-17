@@ -1,0 +1,13 @@
+.venv/
+.buildozer/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.apk
+*.aab
+bin/
+.DS_Store
+.idea/
+.vscode/
+*.log
