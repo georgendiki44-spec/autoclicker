@@ -37,7 +37,7 @@ source.exclude_dirs = .buildozer, .venv, bin, __pycache__, .git
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.4
+version = 0.5
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -190,6 +190,7 @@ android.extra_manifest_application_arguments = src/android/extra_manifest_applic
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
 android.add_src = src/android/java
+android.add_resources = src/android/res
 
 # (list) Android AAR archives to add
 #android.add_aars =
