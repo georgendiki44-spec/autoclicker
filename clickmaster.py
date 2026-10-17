@@ -32,171 +32,149 @@ def get_config_path():
 KV = """
 <AutoClickerRoot>:
     orientation: 'vertical'
-    spacing: 12
-    padding: 18
+    padding: '16dp'
     canvas.before:
         Color:
-            rgba: (0.06, 0.08, 0.12, 1)
+            rgba: (0.055, 0.065, 0.085, 1)
         Rectangle:
             pos: self.pos
             size: self.size
-
-    BoxLayout:
-        size_hint_y: None
-        height: '52dp'
-        Label:
-            text: 'Auto Clicker Pro'
-            bold: True
-            font_size: '22sp'
-            color: (0.3, 0.7, 1, 1)
-
-    BoxLayout:
-        orientation: 'vertical'
-        spacing: 10
-        size_hint_y: None
-        height: '200dp'
-        canvas.before:
-            Color:
-                rgba: (0.12, 0.15, 0.22, 1)
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [14, 14, 14, 14]
-
-        BoxLayout:
+    ScrollView:
+        do_scroll_x: False
+        bar_width: '4dp'
+        GridLayout:
+            cols: 1
+            spacing: '10dp'
+            padding: '2dp'
             size_hint_y: None
-            height: '42dp'
+            height: self.minimum_height
             Label:
-                text: 'Target clicks:'
-                size_hint_x: 0.45
-            TextInput:
-                id: taps_input
-                text: '50'
-                input_filter: 'int'
-                multiline: False
-                halign: 'center'
-        BoxLayout:
-            size_hint_y: None
-            height: '42dp'
+                text: 'AUTO CLICKER PRO'
+                bold: True
+                font_size: '24sp'
+                color: (1, 0.28, 0.30, 1)
+                size_hint_y: None
+                height: '48dp'
             Label:
-                text: 'Infinite mode'
-                size_hint_x: 0.75
-            ToggleButton:
-                id: infinite_toggle
-                text: 'OFF'
-                state: 'normal'
-                group: 'infinite'
-        BoxLayout:
-            size_hint_y: None
-            height: '44dp'
+                text: 'Floating controls for other apps'
+                font_size: '14sp'
+                color: (0.78, 0.80, 0.84, 1)
+                size_hint_y: None
+                height: '30dp'
+            Button:
+                text: '1. Allow display over other apps'
+                size_hint_y: None
+                height: '48dp'
+                on_release: app.open_overlay_settings()
+            Button:
+                text: '2. Enable Auto Clicker accessibility'
+                size_hint_y: None
+                height: '48dp'
+                on_release: app.open_accessibility_settings()
+            Button:
+                text: 'Show floating controls now'
+                size_hint_y: None
+                height: '52dp'
+                background_color: (0.78, 0.12, 0.16, 1)
+                on_release: app.start_native_overlay()
             Label:
-                text: 'Delay (s):'
-                size_hint_x: 0.45
-            Slider:
-                id: delay_slider
-                min: 0.02
-                max: 2.0
-                value: 0.5
-                step: 0.01
-        BoxLayout:
-            size_hint_y: None
-            height: '44dp'
+                text: 'Quick Settings tile'
+                bold: True
+                font_size: '18sp'
+                color: (1, 1, 1, 1)
+                size_hint_y: None
+                height: '32dp'
             Label:
-                text: 'Radius:'
-                size_hint_x: 0.45
-            Slider:
-                id: radius_slider
-                min: 0
-                max: 50
-                value: 5
-                step: 1
-        BoxLayout:
-            size_hint_y: None
-            height: '42dp'
+                text: 'After enabling both permissions, pull down Quick Settings, tap Edit, and add Auto Clicker. Tap the tile to open floating controls.'
+                text_size: self.width, None
+                halign: 'left'
+                valign: 'middle'
+                font_size: '14sp'
+                color: (0.82, 0.84, 0.87, 1)
+                size_hint_y: None
+                height: self.texture_size[1] + dp(18)
             Label:
-                text: 'Click type:'
-                size_hint_x: 0.45
-            ToggleButton:
-                id: click_type_toggle
-                text: 'Single'
-                state: 'down'
-                group: 'click_type'
-
-    BoxLayout:
-        orientation: 'vertical'
-        spacing: 10
-        size_hint_y: None
-        height: '102dp'
-        canvas.before:
-            Color:
-                rgba: (0.12, 0.15, 0.22, 1)
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [14, 14, 14, 14]
-
-        Button:
-            id: target_button
-            text: 'Select target position'
-            on_release: app.select_target()
-
-        Label:
-            id: target_label
-            text: 'Target: not selected'
-            color: (0.8, 0.8, 0.8, 1)
-
-    BoxLayout:
-        spacing: 10
-        size_hint_y: None
-        height: '60dp'
-        Button:
-            id: start_button
-            text: 'Start'
-            on_release: app.start_clicking()
-        Button:
-            id: pause_button
-            text: 'Pause'
-            on_release: app.pause_clicking()
-        Button:
-            id: stop_button
-            text: 'Stop'
-            on_release: app.stop_clicking()
-
-    BoxLayout:
-        size_hint_y: None
-        height: '70dp'
-        Label:
-            id: status_label
-            text: 'Ready'
-            bold: True
-            font_size: '18sp'
-            color: (0.8, 0.8, 0.8, 1)
-
-    BoxLayout:
-        size_hint_y: None
-        height: '70dp'
-        Label:
-            id: counter_label
-            text: 'Clicks: 0'
-            font_size: '16sp'
-            color: (0.8, 0.8, 0.8, 1)
-
-    BoxLayout:
-        size_hint_y: None
-        height: '52dp'
-        Button:
-            text: 'Save setup'
-            on_release: app.save_settings()
-        Button:
-            text: 'Load setup'
-            on_release: app.load_settings()
-
-    BoxLayout:
-        size_hint_y: None
-        height: '52dp'
-        Button:
-            text: 'Quick overlay'
-            on_release: app.toggle_quick_panel()
+                text: 'Desktop test settings'
+                bold: True
+                font_size: '17sp'
+                color: (1, 1, 1, 1)
+                size_hint_y: None
+                height: '30dp'
+            BoxLayout:
+                size_hint_y: None
+                height: '42dp'
+                Label:
+                    text: 'Tap count'
+                TextInput:
+                    id: taps_input
+                    text: '50'
+                    input_filter: 'int'
+                    multiline: False
+                    halign: 'center'
+            BoxLayout:
+                size_hint_y: None
+                height: '42dp'
+                Label:
+                    text: 'Continuous'
+                ToggleButton:
+                    id: infinite_toggle
+                    text: 'OFF'
+                    state: 'normal'
+            BoxLayout:
+                size_hint_y: None
+                height: '42dp'
+                Label:
+                    text: 'Delay (seconds)'
+                Slider:
+                    id: delay_slider
+                    min: 0.02
+                    max: 2.0
+                    value: 0.5
+                    step: 0.01
+            BoxLayout:
+                size_hint_y: None
+                height: '42dp'
+                Label:
+                    text: 'Radius'
+                Slider:
+                    id: radius_slider
+                    min: 0
+                    max: 50
+                    value: 5
+                    step: 1
+            BoxLayout:
+                size_hint_y: None
+                height: '42dp'
+                Label:
+                    text: 'Click type'
+                ToggleButton:
+                    id: click_type_toggle
+                    text: 'Single'
+                    state: 'down'
+            Label:
+                id: target_label
+                text: 'Target: not selected'
+                size_hint_y: None
+                height: '30dp'
+            Label:
+                id: status_label
+                text: 'Ready'
+                size_hint_y: None
+                height: '30dp'
+            Label:
+                id: counter_label
+                text: 'Clicks: 0'
+                size_hint_y: None
+                height: '30dp'
+            BoxLayout:
+                size_hint_y: None
+                height: '46dp'
+                Button:
+                    text: 'Save setup'
+                    on_release: app.save_settings()
+                Button:
+                    text: 'Load setup'
+                    on_release: app.load_settings()
 """
 
 
@@ -308,6 +286,39 @@ class AutoClickerApp(App):
         )
         self.current_pattern, instance.text = patterns[(current_index + 1) % len(patterns)]
         instance.state = 'down'
+
+    def open_overlay_settings(self):
+        try:
+            from jnius import autoclass
+            activity = autoclass('org.kivy.android.PythonActivity').mActivity
+            Intent = autoclass('android.content.Intent')
+            Uri = autoclass('android.net.Uri')
+            Settings = autoclass('android.provider.Settings')
+            intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            intent.setData(Uri.parse('package:' + str(activity.getPackageName())))
+            activity.startActivity(intent)
+        except Exception as exc:
+            self.set_status(f'Open Android Settings manually: {exc}', (1, 0.3, 0.3, 1))
+
+    def open_accessibility_settings(self):
+        try:
+            from jnius import autoclass
+            activity = autoclass('org.kivy.android.PythonActivity').mActivity
+            Intent = autoclass('android.content.Intent')
+            activity.startActivity(Intent('android.settings.ACCESSIBILITY_SETTINGS'))
+        except Exception as exc:
+            self.set_status(f'Open Accessibility settings manually: {exc}', (1, 0.3, 0.3, 1))
+
+    def start_native_overlay(self):
+        try:
+            from jnius import autoclass
+            activity = autoclass('org.kivy.android.PythonActivity').mActivity
+            Intent = autoclass('android.content.Intent')
+            service = autoclass('com.george.autoclickerpro.FloatingOverlayService')
+            activity.startService(Intent(activity, service))
+            self.show_status('Opening floating controls')
+        except Exception as exc:
+            self.set_status(f'Allow overlay permission first: {exc}', (1, 0.3, 0.3, 1))
 
     def configure_android(self):
         try:
