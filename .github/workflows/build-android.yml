@@ -15,6 +15,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Remove stale Buildozer state
+        run: rm -rf .buildozer
+
       - name: Build APK
         run: |
           printf 'y\n' | buildozer android debug
