@@ -55,7 +55,29 @@ public class FloatingOverlayService extends Service {
             }
             int[] loc = new int[2];
             target.getLocationOnScreen(loc);
-            service.tap(loc[0] + target.getWidth() / 2f, loc[1] + target.getHeight() / 2f);
+            float tapX = loc[0] + target.getWidth() / 2f;
+            float tapY = loc[1] + target.getHeight() / 2f;
+            boolean dispatched = service.tap(tapX, tapY,
+                new android.accessibilityservice.GestureDescription.GestureResultCallback() {
+                    @Override public void onCompleted(
+                            android.accessibilityservice.GestureDescription gestureDescription) {
+                        if (running && status != null) {
+                            status.setText("Tap sent • " + tapCount + " taps");
+                        }
+                    }
+
+                    @Override public void onCancelled(
+                            android.accessibilityservice.GestureDescription gestureDescription) {
+                        if (running && status != null) {
+                            status.setText("Tap cancelled by Android");
+                        }
+                    }
+                });
+            if (!dispatched) {
+                running = false;
+                status.setText("Android rejected tap. Re-enable Accessibility service.");
+                return;
+            }
             tapCount++;
             status.setText("Running • " + tapCount + " taps");
             handler.postDelayed(this, intervalMs);
@@ -77,6 +99,8 @@ public class FloatingOverlayService extends Service {
             startForeground(4107, notification);
         }
         if (!Settings.canDrawOverlays(this)) {
+            active = false;
+            stopForeground(true);
             stopSelf();
             return;
         }
@@ -217,7 +241,9 @@ public class FloatingOverlayService extends Service {
     }
 
     @Override public void onDestroy() {
-        running = false; handler.removeCallbacks(clickLoop);
+        running = false;
+        active = false;
+        handler.removeCallbacks(clickLoop);
         if (wm != null) {
             try { if (panel != null) wm.removeView(panel); } catch (Exception ignored) { }
             try { if (target != null) wm.removeView(target); } catch (Exception ignored) { }
