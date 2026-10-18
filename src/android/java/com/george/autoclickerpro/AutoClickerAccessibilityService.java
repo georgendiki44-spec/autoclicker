@@ -71,7 +71,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         if ((templateCommentEnabled || autoCommentSuggestions) &&
             (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) &&
             likes >= minimumLikes && comments >= minimumComments) {
-            String signature = screenText.replaceAll("(?i)[0-9,.]+\\s*[kmb]?\\s*(likes?|comments?)", "$2")
+            String signature = screenText.replaceAll("(?i)[0-9,.]+\\s*[kmb]?\\s*(likes?|comments?)", "$1")
                 .replaceAll("\\s+", " ").trim();
             if (signature.length() > 500) signature = signature.substring(0, 500);
             long now = System.currentTimeMillis();
