@@ -635,6 +635,11 @@ class AutoClickerApp(App):
             'radius': self.radius_slider.value,
             'click_type': self.current_pattern,
             'target': [self.target_x, self.target_y],
+            'minimum_likes': int(self.min_likes_input.text or '1000'),
+            'minimum_comments': int(self.min_comments_input.text or '10'),
+            'comment_cooldown_seconds': int(self.comment_cooldown_input.text or '60'),
+            'metric_mode': self.metric_mode_toggle.state == 'down',
+            'auto_comment_suggestions': self.auto_comment_toggle.state == 'down',
         }
         try:
             with open(get_config_path(), 'w', encoding='utf-8') as fh:
