@@ -744,7 +744,7 @@ class AutoClickerApp(App):
                 return
             self.ai_status_label.text = 'AI status: Capturing screen and asking Gemini…'
             instance.analyzeCurrentScreen()
-            Clock.schedule_interval(self.refresh_ai_status, 1.0)
+            self._set_status_polling(True)
         except Exception as exc:
             self.ai_status_label.text = 'AI status: ' + str(exc)
 
