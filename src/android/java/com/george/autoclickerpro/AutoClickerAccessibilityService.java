@@ -43,7 +43,12 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         }
     }
 
-    private boolean isTikTokPackage(String packageName) {\n        String p = packageName.toLowerCase(Locale.ROOT);\n        return p.contains("tiktok") || p.contains("musically");\n    }\n\n    private String describeScreen(AccessibilityNodeInfo root) {
+    private boolean isTikTokPackage(String packageName) {
+        String p = packageName.toLowerCase(Locale.ROOT);
+        return p.contains("tiktok") || p.contains("musically");
+    }
+
+    private String describeScreen(AccessibilityNodeInfo root) {
         StringBuilder out = new StringBuilder(); collectLabels(root, out, 0);
         String s = out.toString().toLowerCase(Locale.ROOT);
         if (s.contains("for you")) return "For You feed";
