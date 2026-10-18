@@ -101,6 +101,78 @@ KV = """
                     size_hint_y: None
                     height: self.texture_size[1] + dp(18)
                 Label:
+                    text: 'AI VIDEO ASSISTANT'
+                    bold: True
+                    font_size: '20sp'
+                    color: (1, 0.28, 0.30, 1)
+                    size_hint_y: None
+                    height: '38dp'
+                Label:
+                    text: 'Configure Gemini here, then analyze the video from the main app. Your key stays on this device.'
+                    text_size: self.width, None
+                    halign: 'left'
+                    valign: 'middle'
+                    font_size: '14sp'
+                    color: (0.82, 0.84, 0.87, 1)
+                    size_hint_y: None
+                    height: self.texture_size[1] + dp(12)
+                TextInput:
+                    id: gemini_key_input
+                    hint_text: 'Paste Gemini API key'
+                    password: True
+                    multiline: False
+                    size_hint_y: None
+                    height: '48dp'
+                    background_color: (0.12, 0.14, 0.18, 1)
+                    foreground_color: (1, 1, 1, 1)
+                    hint_text_color: (0.65, 0.68, 0.72, 1)
+                    padding: '12dp', '12dp'
+                BoxLayout:
+                    size_hint_y: None
+                    height: '48dp'
+                    spacing: '8dp'
+                    Button:
+                        text: 'Save API key'
+                        background_color: (0.78, 0.12, 0.16, 1)
+                        on_release: app.save_gemini_key()
+                    Button:
+                        text: 'AI Analyze'
+                        on_release: app.analyze_current_screen()
+                BoxLayout:
+                    size_hint_y: None
+                    height: '48dp'
+                    spacing: '8dp'
+                    Button:
+                        id: auto_like_button
+                        text: 'Auto Like: OFF'
+                        on_release: app.toggle_native_feature('like')
+                    Button:
+                        id: auto_next_button
+                        text: 'Auto Next: OFF'
+                        on_release: app.toggle_native_feature('next')
+                Button:
+                    text: 'Next video'
+                    size_hint_y: None
+                    height: '46dp'
+                    on_release: app.next_video()
+                Label:
+                    id: ai_status_label
+                    text: 'AI status: Save your Gemini key to begin'
+                    text_size: self.width, None
+                    halign: 'left'
+                    valign: 'middle'
+                    font_size: '13sp'
+                    color: (1, 0.72, 0.30, 1)
+                    size_hint_y: None
+                    height: self.texture_size[1] + dp(12)
+                Label:
+                    text: 'CLICK SETTINGS'
+                    bold: True
+                    font_size: '20sp'
+                    color: (1, 0.28, 0.30, 1)
+                    size_hint_y: None
+                    height: '38dp'
+                Label:
                     text: 'Desktop test settings'
                     bold: True
                     font_size: '17sp'
@@ -275,6 +347,10 @@ class AutoClickerApp(App):
         self.target_label = self.root_widget.ids.target_label
         self.status_label = self.root_widget.ids.status_label
         self.counter_label = self.root_widget.ids.counter_label
+        self.gemini_key_input = self.root_widget.ids.gemini_key_input
+        self.ai_status_label = self.root_widget.ids.ai_status_label
+        self.auto_like_button = self.root_widget.ids.auto_like_button
+        self.auto_next_button = self.root_widget.ids.auto_next_button
 
         self.infinite_toggle.bind(on_release=self.on_toggle_infinite)
         self.click_type_toggle.bind(on_release=self.on_toggle_click_type)
@@ -326,6 +402,69 @@ class AutoClickerApp(App):
             self.show_status('Opening floating controls')
         except Exception as exc:
             self.set_status(f'Allow overlay permission first: {exc}', (1, 0.3, 0.3, 1))
+
+    def save_gemini_key(self):
+        key = self.gemini_key_input.text.strip()
+        if not key:
+            self.ai_status_label.text = 'AI status: Enter your Gemini API key first'
+            return
+        try:
+            from jnius import autoclass
+            activity = autoclass('org.kivy.android.PythonActivity').mActivity
+            prefs = activity.getSharedPreferences('autoclicker_private', 0)
+            editor = prefs.edit()
+            editor.putString('gemini_api_key', key)
+            editor.apply()
+            self.ai_status_label.text = 'AI status: API key saved privately on this device'
+            self.gemini_key_input.text = ''
+        except Exception as exc:
+            self.ai_status_label.text = 'AI status: Could not save key on Android: ' + str(exc)
+
+    def analyze_current_screen(self):
+        try:
+            from jnius import autoclass
+            activity = autoclass('org.kivy.android.PythonActivity').mActivity
+            service = autoclass('com.george.autoclickerpro.AutoClickerAccessibilityService')
+            instance = service.getInstance()
+            if instance is None:
+                self.ai_status_label.text = 'AI status: Enable Auto Clicker in Accessibility settings first'
+                return
+            self.ai_status_label.text = 'AI status: Capturing screen and asking Gemini…'
+            instance.analyzeCurrentScreen()
+        except Exception as exc:
+            self.ai_status_label.text = 'AI status: ' + str(exc)
+
+    def toggle_native_feature(self, feature):
+        try:
+            from jnius import autoclass
+            service = autoclass('com.george.autoclickerpro.AutoClickerAccessibilityService')
+            instance = service.getInstance()
+            if instance is None:
+                self.ai_status_label.text = 'Enable Accessibility service first'
+                return
+            if feature == 'like':
+                enabled = not bool(instance.isAutoLike())
+                instance.setAutoLike(enabled)
+                self.auto_like_button.text = 'Auto Like: ' + ('ON' if enabled else 'OFF')
+            elif feature == 'next':
+                enabled = not bool(instance.isAutoNext())
+                instance.setAutoNext(enabled)
+                self.auto_next_button.text = 'Auto Next: ' + ('ON' if enabled else 'OFF')
+        except Exception as exc:
+            self.ai_status_label.text = 'Could not change setting: ' + str(exc)
+
+    def next_video(self):
+        try:
+            from jnius import autoclass
+            service = autoclass('com.george.autoclickerpro.AutoClickerAccessibilityService')
+            instance = service.getInstance()
+            if instance is None:
+                self.ai_status_label.text = 'Enable Accessibility service first'
+                return
+            instance.nextVideo()
+            self.ai_status_label.text = 'AI status: Requested next video'
+        except Exception as exc:
+            self.ai_status_label.text = 'Could not skip video: ' + str(exc)
 
     def configure_android(self):
         try:
