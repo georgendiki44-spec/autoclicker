@@ -431,8 +431,20 @@ class AutoClickerApp(App):
                 return
             self.ai_status_label.text = 'AI status: Capturing screen and asking Gemini…'
             instance.analyzeCurrentScreen()
+            Clock.schedule_interval(self.refresh_ai_status, 1.0)
         except Exception as exc:
             self.ai_status_label.text = 'AI status: ' + str(exc)
+
+    def refresh_ai_status(self, dt):
+        try:
+            from jnius import autoclass
+            overlay = autoclass('com.george.autoclickerpro.FloatingOverlayService')
+            status = str(overlay.getVisionStatus())
+            if status and status != 'null':
+                self.ai_status_label.text = 'AI status: ' + status
+        except Exception:
+            pass
+        return True
 
     def toggle_native_feature(self, feature):
         try:
