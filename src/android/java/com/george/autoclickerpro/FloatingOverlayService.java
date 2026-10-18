@@ -25,6 +25,7 @@ import android.widget.TextView;
 
 public class FloatingOverlayService extends Service {
     public static volatile boolean active = false;
+    private static volatile FloatingOverlayService instance;
     private WindowManager wm;
     private WindowManager.LayoutParams panelParams, targetParams, chipParams;
     private LinearLayout panel;
@@ -75,6 +76,7 @@ public class FloatingOverlayService extends Service {
 
     @Override public void onCreate() {
         super.onCreate();
+        instance = this;
         active = true;
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel("autoclicker_overlay",
@@ -273,8 +275,8 @@ public class FloatingOverlayService extends Service {
     }
 
     public static void stopFromVolumeKey() {
-        // Called by the accessibility service when a volume key is pressed.
-        // The service instance performs the stop on the UI thread.
+        FloatingOverlayService service = instance;
+        if (service != null) service.handler.post(() -> service.stopClicking("Stopped by volume key"));
     }
 
     public void stopClicking(String label) {
@@ -285,7 +287,7 @@ public class FloatingOverlayService extends Service {
     @Override public int onStartCommand(Intent intent, int flags, int startId) { return START_STICKY; }
 
     @Override public void onDestroy() {
-        running = false; active = false; handler.removeCallbacks(clickLoop);
+        running = false; active = false; if (instance == this) instance = null; handler.removeCallbacks(clickLoop);
         if (wm != null) {
             try { if (panel != null) wm.removeView(panel); } catch (Exception ignored) { }
             try { if (target != null) wm.removeView(target); } catch (Exception ignored) { }
