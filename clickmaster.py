@@ -36,7 +36,6 @@ KV = """
     do_default_tab: False
     tab_width: dp(112)
     background_color: (0.055, 0.065, 0.085, 1)
-    background_normal: ''
     strip_border: (0, 0, 0, 0)
     strip_image: ''
     canvas.before:
