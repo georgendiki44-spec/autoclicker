@@ -15,6 +15,7 @@ from kivy.uix.label import Label
 from kivy.uix.modalview import ModalView
 from kivy.uix.slider import Slider
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
 
@@ -32,161 +33,291 @@ def get_config_path():
 
 KV = """
 <AutoClickerRoot>:
-    do_scroll_x: False
-    do_scroll_y: True
-    bar_width: '4dp'
-    BoxLayout:
-        size_hint_y: None
-        height: self.minimum_height
-        orientation: 'vertical'
-        padding: '16dp'
-        canvas.before:
-            Color:
-                rgba: (0.055, 0.065, 0.085, 1)
-            Rectangle:
-                pos: self.pos
-                size: self.size
+    do_default_tab: False
+    tab_width: dp(112)
+    background_color: (0.055, 0.065, 0.085, 1)
+    background_normal: ''
+    strip_border: (0, 0, 0, 0)
+    strip_image: ''
+    canvas.before:
+        Color:
+            rgba: (0.055, 0.065, 0.085, 1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    TabbedPanelItem:
+        text: 'Home'
+        BoxLayout:
+            orientation: 'vertical'
+            padding: dp(16)
+            spacing: dp(12)
+            canvas.before:
+                Color:
+                    rgba: (0.055, 0.065, 0.085, 1)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            ScrollView:
+                do_scroll_x: False
+                GridLayout:
+                    cols: 1
+                    spacing: dp(12)
+                    padding: dp(2)
+                    size_hint_y: None
+                    height: self.minimum_height
+                    Label:
+                        text: 'AUTO CLICKER PRO'
+                        bold: True
+                        font_size: '25sp'
+                        color: (1, 0.25, 0.30, 1)
+                        size_hint_y: None
+                        height: dp(42)
+                    Label:
+                        text: 'CONTROL CENTRE'
+                        bold: True
+                        font_size: '13sp'
+                        color: (0.68, 0.72, 0.78, 1)
+                        size_hint_y: None
+                        height: dp(24)
+                    Label:
+                        text: 'Configure your controls, then start the floating panel over the app you want to automate.'
+                        text_size: self.width, None
+                        halign: 'left'
+                        valign: 'middle'
+                        color: (0.88, 0.89, 0.92, 1)
+                        size_hint_y: None
+                        height: self.texture_size[1] + dp(10)
+                    Button:
+                        text: '1  •  Allow display over other apps'
+                        size_hint_y: None
+                        height: dp(50)
+                        background_color: (0.17, 0.19, 0.24, 1)
+                        on_release: app.open_overlay_settings()
+                    Button:
+                        text: '2  •  Enable Accessibility service'
+                        size_hint_y: None
+                        height: dp(50)
+                        background_color: (0.17, 0.19, 0.24, 1)
+                        on_release: app.open_accessibility_settings()
+                    Button:
+                        text: 'START FLOATING CONTROLS'
+                        bold: True
+                        size_hint_y: None
+                        height: dp(56)
+                        background_color: (0.78, 0.10, 0.16, 1)
+                        on_release: app.start_native_overlay()
+                    Label:
+                        text: 'Android controls are run through the system Accessibility service. Android permissions must be enabled by you.'
+                        text_size: self.width, None
+                        halign: 'left'
+                        valign: 'middle'
+                        color: (0.72, 0.75, 0.80, 1)
+                        font_size: '13sp'
+                        size_hint_y: None
+                        height: self.texture_size[1] + dp(12)
+                    Label:
+                        id: status_label
+                        text: 'Ready • automation stopped'
+                        text_size: self.width, None
+                        halign: 'left'
+                        valign: 'middle'
+                        color: (0.35, 0.88, 0.63, 1)
+                        size_hint_y: None
+                        height: dp(34)
+                    Label:
+                        id: counter_label
+                        text: 'Clicks: 0'
+                        color: (1, 1, 1, 1)
+                        font_size: '17sp'
+                        size_hint_y: None
+                        height: dp(32)
+                    Label:
+                        text: 'Quick Settings tile: pull down Android Quick Settings, tap Edit, then add Auto Clicker.'
+                        text_size: self.width, None
+                        halign: 'left'
+                        valign: 'middle'
+                        color: (0.72, 0.75, 0.80, 1)
+                        font_size: '13sp'
+                        size_hint_y: None
+                        height: self.texture_size[1] + dp(12)
+    TabbedPanelItem:
+        text: 'Clicker'
         ScrollView:
             do_scroll_x: False
-            bar_width: '4dp'
-            GridLayout:
-                cols: 1
-                spacing: '10dp'
-                padding: '2dp'
+            BoxLayout:
+                orientation: 'vertical'
+                padding: dp(16)
+                spacing: dp(10)
                 size_hint_y: None
                 height: self.minimum_height
+                canvas.before:
+                    Color:
+                        rgba: (0.055, 0.065, 0.085, 1)
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
                 Label:
-                    text: 'AUTO CLICKER PRO'
+                    text: 'CLICK ENGINE'
                     bold: True
-                    font_size: '24sp'
-                    color: (1, 0.28, 0.30, 1)
+                    font_size: '22sp'
+                    color: (1, 0.25, 0.30, 1)
                     size_hint_y: None
-                    height: '48dp'
+                    height: dp(38)
                 Label:
-                    text: 'Floating controls for other apps'
-                    font_size: '14sp'
-                    color: (0.78, 0.80, 0.84, 1)
-                    size_hint_y: None
-                    height: '30dp'
-                Button:
-                    text: '1. Allow display over other apps'
-                    size_hint_y: None
-                    height: '48dp'
-                    on_release: app.open_overlay_settings()
-                Button:
-                    text: '2. Enable Auto Clicker accessibility'
-                    size_hint_y: None
-                    height: '48dp'
-                    on_release: app.open_accessibility_settings()
-                Button:
-                    text: 'Show floating controls now'
-                    size_hint_y: None
-                    height: '52dp'
-                    background_color: (0.78, 0.12, 0.16, 1)
-                    on_release: app.start_native_overlay()
-                Label:
-                    text: 'Quick Settings tile'
-                    bold: True
-                    font_size: '18sp'
-                    color: (1, 1, 1, 1)
-                    size_hint_y: None
-                    height: '32dp'
-                Label:
-                    text: 'After enabling both permissions, pull down Quick Settings, tap Edit, and add Auto Clicker. Tap the tile to open floating controls.'
+                    text: 'These controls configure the in-app test runner. On Android, use the floating panel to perform real screen gestures.'
                     text_size: self.width, None
                     halign: 'left'
                     valign: 'middle'
-                    font_size: '14sp'
-                    color: (0.82, 0.84, 0.87, 1)
-                    size_hint_y: None
-                    height: self.texture_size[1] + dp(18)
-                Label:
-                    text: 'AI VIDEO ASSISTANT'
-                    bold: True
-                    font_size: '20sp'
-                    color: (1, 0.28, 0.30, 1)
-                    size_hint_y: None
-                    height: '38dp'
-                Label:
-                    text: 'Configure Gemini here, then analyze the video from the main app. Your key stays on this device.'
-                    text_size: self.width, None
-                    halign: 'left'
-                    valign: 'middle'
-                    font_size: '14sp'
-                    color: (0.82, 0.84, 0.87, 1)
+                    color: (0.80, 0.82, 0.86, 1)
                     size_hint_y: None
                     height: self.texture_size[1] + dp(12)
-                TextInput:
-                    id: gemini_key_input
-                    hint_text: 'Paste Gemini API key'
-                    password: True
-                    multiline: False
-                    size_hint_y: None
-                    height: '48dp'
-                    background_color: (0.12, 0.14, 0.18, 1)
-                    foreground_color: (1, 1, 1, 1)
-                    hint_text_color: (0.65, 0.68, 0.72, 1)
-                    padding: '12dp', '12dp'
                 BoxLayout:
                     size_hint_y: None
-                    height: '48dp'
-                    spacing: '8dp'
-                    Button:
-                        text: 'Save API key'
-                        background_color: (0.78, 0.12, 0.16, 1)
-                        on_release: app.save_gemini_key()
-                    Button:
-                        text: 'AI Analyze'
-                        on_release: app.analyze_current_screen()
+                    height: dp(46)
+                    spacing: dp(10)
+                    Label:
+                        text: 'Tap count'
+                        size_hint_x: 0.58
+                        halign: 'left'
+                    TextInput:
+                        id: taps_input
+                        text: '50'
+                        input_filter: 'int'
+                        multiline: False
+                        halign: 'center'
+                        size_hint_x: 0.42
                 BoxLayout:
                     size_hint_y: None
-                    height: '48dp'
-                    spacing: '8dp'
-                    Button:
-                        id: auto_like_button
-                        text: 'Auto Like: OFF'
-                        on_release: app.toggle_native_feature('like')
-                    Button:
-                        id: auto_next_button
-                        text: 'Auto Next: OFF'
-                        on_release: app.toggle_native_feature('next')
-                Button:
-                    text: 'Next video'
+                    height: dp(46)
+                    spacing: dp(10)
+                    Label:
+                        text: 'Continuous mode'
+                        size_hint_x: 0.58
+                        halign: 'left'
+                    ToggleButton:
+                        id: infinite_toggle
+                        text: 'OFF'
+                        state: 'normal'
+                        size_hint_x: 0.42
+                BoxLayout:
                     size_hint_y: None
-                    height: '46dp'
-                    on_release: app.next_video()
+                    height: dp(46)
+                    spacing: dp(10)
+                    Label:
+                        text: 'Interval'
+                        size_hint_x: 0.58
+                        halign: 'left'
+                    Slider:
+                        id: delay_slider
+                        min: 0.02
+                        max: 2.0
+                        value: 0.5
+                        step: 0.01
+                        size_hint_x: 0.42
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(46)
+                    spacing: dp(10)
+                    Label:
+                        text: 'Tap variation radius'
+                        size_hint_x: 0.58
+                        halign: 'left'
+                    Slider:
+                        id: radius_slider
+                        min: 0
+                        max: 50
+                        value: 5
+                        step: 1
+                        size_hint_x: 0.42
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(46)
+                    spacing: dp(10)
+                    Label:
+                        text: 'Gesture type'
+                        size_hint_x: 0.58
+                        halign: 'left'
+                    ToggleButton:
+                        id: click_type_toggle
+                        text: 'Single'
+                        state: 'down'
+                        size_hint_x: 0.42
                 Label:
-                    id: ai_status_label
-                    text: 'AI status: Save your Gemini key to begin'
+                    id: target_label
+                    text: 'Target: not selected'
+                    color: (0.85, 0.87, 0.90, 1)
+                    size_hint_y: None
+                    height: dp(32)
+                Button:
+                    text: 'Select test target'
+                    size_hint_y: None
+                    height: dp(48)
+                    on_release: app.select_target()
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(50)
+                    spacing: dp(8)
+                    Button:
+                        text: 'Start'
+                        background_color: (0.12, 0.52, 0.32, 1)
+                        on_release: app.start_clicking()
+                    Button:
+                        text: 'Pause / Resume'
+                        background_color: (0.60, 0.38, 0.10, 1)
+                        on_release: app.pause_clicking()
+                    Button:
+                        text: 'Stop'
+                        background_color: (0.72, 0.12, 0.16, 1)
+                        on_release: app.stop_clicking()
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(48)
+                    spacing: dp(8)
+                    Button:
+                        text: 'Save setup'
+                        on_release: app.save_settings()
+                    Button:
+                        text: 'Load setup'
+                        on_release: app.load_settings()
+    TabbedPanelItem:
+        text: 'Video'
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                orientation: 'vertical'
+                padding: dp(16)
+                spacing: dp(12)
+                size_hint_y: None
+                height: self.minimum_height
+                canvas.before:
+                    Color:
+                        rgba: (0.055, 0.065, 0.085, 1)
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                Label:
+                    text: 'VIDEO AUTOMATION'
+                    bold: True
+                    font_size: '22sp'
+                    color: (1, 0.25, 0.30, 1)
+                    size_hint_y: None
+                    height: dp(38)
+                Label:
+                    text: 'Metric-based actions depend on labels exposed by the app currently on screen. If metrics cannot be read, do not assume a video qualifies.'
                     text_size: self.width, None
                     halign: 'left'
                     valign: 'middle'
-                    font_size: '13sp'
-                    color: (1, 0.72, 0.30, 1)
+                    color: (0.80, 0.82, 0.86, 1)
                     size_hint_y: None
                     height: self.texture_size[1] + dp(12)
-                Label:
-                    text: 'SMART VIDEO RULES'
-                    bold: True
-                    font_size: '20sp'
-                    color: (1, 0.28, 0.30, 1)
-                    size_hint_y: None
-                    height: '38dp'
-                Label:
-                    text: 'Metrics are read from TikTok accessibility labels when available. Unknown metrics will not trigger metric-based actions.'
-                    text_size: self.width, None
-                    halign: 'left'
-                    valign: 'middle'
-                    font_size: '13sp'
-                    color: (0.82, 0.84, 0.87, 1)
-                    size_hint_y: None
-                    height: self.texture_size[1] + dp(10)
                 BoxLayout:
                     size_hint_y: None
-                    height: '44dp'
-                    spacing: '8dp'
+                    height: dp(46)
+                    spacing: dp(10)
                     Label:
                         text: 'Minimum likes'
+                        size_hint_x: 0.60
+                        halign: 'left'
                     TextInput:
                         id: min_likes_input
                         text: '1000'
@@ -195,10 +326,12 @@ KV = """
                         halign: 'center'
                 BoxLayout:
                     size_hint_y: None
-                    height: '44dp'
-                    spacing: '8dp'
+                    height: dp(46)
+                    spacing: dp(10)
                     Label:
                         text: 'Minimum comments'
+                        size_hint_x: 0.60
+                        halign: 'left'
                     TextInput:
                         id: min_comments_input
                         text: '10'
@@ -207,10 +340,107 @@ KV = """
                         halign: 'center'
                 BoxLayout:
                     size_hint_y: None
-                    height: '44dp'
-                    spacing: '8dp'
+                    height: dp(48)
+                    spacing: dp(8)
+                    ToggleButton:
+                        id: metric_mode_toggle
+                        text: 'Metric skip: OFF'
+                        state: 'normal'
+                        on_release: app.toggle_metric_mode()
+                    ToggleButton:
+                        id: auto_like_button
+                        text: 'Auto Like: OFF'
+                        on_release: app.toggle_native_feature('like')
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(48)
+                    spacing: dp(8)
+                    ToggleButton:
+                        id: auto_next_button
+                        text: 'Auto Next: OFF'
+                        on_release: app.toggle_native_feature('next')
+                    Button:
+                        text: 'Next video'
+                        on_release: app.next_video()
+                Button:
+                    text: 'Save video rules'
+                    size_hint_y: None
+                    height: dp(50)
+                    background_color: (0.78, 0.10, 0.16, 1)
+                    on_release: app.save_automation_rules()
+                Label:
+                    id: ai_status_label
+                    text: 'Status: Enable Accessibility to control other apps'
+                    text_size: self.width, None
+                    halign: 'left'
+                    valign: 'middle'
+                    color: (1, 0.72, 0.30, 1)
+                    size_hint_y: None
+                    height: self.texture_size[1] + dp(14)
+    TabbedPanelItem:
+        text: 'Comments + AI'
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                orientation: 'vertical'
+                padding: dp(16)
+                spacing: dp(12)
+                size_hint_y: None
+                height: self.minimum_height
+                canvas.before:
+                    Color:
+                        rgba: (0.055, 0.065, 0.085, 1)
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                Label:
+                    text: 'COMMENTS & AI ASSISTANT'
+                    bold: True
+                    font_size: '22sp'
+                    color: (1, 0.25, 0.30, 1)
+                    size_hint_y: None
+                    height: dp(38)
+                Label:
+                    text: 'Choose reusable text or AI suggestions. The app may fill the comment composer when supported; posting remains a manual action.'
+                    text_size: self.width, None
+                    halign: 'left'
+                    valign: 'middle'
+                    color: (0.80, 0.82, 0.86, 1)
+                    size_hint_y: None
+                    height: self.texture_size[1] + dp(12)
+                Label:
+                    text: 'Reusable comment'
+                    halign: 'left'
+                    size_hint_y: None
+                    height: dp(26)
+                TextInput:
+                    id: reusable_comment_input
+                    hint_text: 'Write the comment you want to reuse'
+                    multiline: True
+                    size_hint_y: None
+                    height: dp(104)
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(48)
+                    spacing: dp(8)
+                    ToggleButton:
+                        id: template_comment_toggle
+                        text: 'Reusable text: OFF'
+                        state: 'normal'
+                        on_release: app.toggle_template_comment()
+                    ToggleButton:
+                        id: auto_comment_toggle
+                        text: 'AI suggestions: OFF'
+                        state: 'normal'
+                        on_release: app.toggle_auto_comment()
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(46)
+                    spacing: dp(10)
                     Label:
                         text: 'Comment cooldown (sec)'
+                        size_hint_x: 0.62
+                        halign: 'left'
                     TextInput:
                         id: comment_cooldown_input
                         text: '60'
@@ -218,131 +448,100 @@ KV = """
                         multiline: False
                         halign: 'center'
                 Label:
-                    text: 'Reusable comment (up to 500 characters)'
-                    size_hint_y: None
-                    height: '28dp'
+                    text: 'Gemini API key'
                     halign: 'left'
+                    size_hint_y: None
+                    height: dp(26)
                 TextInput:
-                    id: reusable_comment_input
-                    hint_text: 'Write a comment for qualifying videos'
-                    multiline: True
+                    id: gemini_key_input
+                    hint_text: 'Paste Gemini API key (stored on this device)'
+                    password: True
+                    multiline: False
                     size_hint_y: None
-                    height: '76dp'
+                    height: dp(48)
                 BoxLayout:
                     size_hint_y: None
-                    height: '48dp'
-                    spacing: '8dp'
-                    ToggleButton:
-                        id: metric_mode_toggle
-                        text: 'Metric skip: OFF'
-                        state: 'normal'
-                        on_release: app.toggle_metric_mode()
-                    ToggleButton:
-                        id: auto_comment_toggle
-                        text: 'AI suggestions: OFF'
-                        state: 'normal'
-                        on_release: app.toggle_auto_comment()
-                    ToggleButton:
-                        id: template_comment_toggle
-                        text: 'Reusable comment: OFF'
-                        state: 'normal'
-                        on_release: app.toggle_template_comment()
+                    height: dp(50)
+                    spacing: dp(8)
+                    Button:
+                        text: 'Save API key'
+                        background_color: (0.78, 0.10, 0.16, 1)
+                        on_release: app.save_gemini_key()
+                    Button:
+                        text: 'Analyze screen'
+                        on_release: app.analyze_current_screen()
                 Button:
-                    text: 'Save video rules'
+                    text: 'Save comment rules'
                     size_hint_y: None
-                    height: '46dp'
-                    background_color: (0.78, 0.12, 0.16, 1)
+                    height: dp(50)
                     on_release: app.save_automation_rules()
+    TabbedPanelItem:
+        text: 'Settings'
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                orientation: 'vertical'
+                padding: dp(16)
+                spacing: dp(12)
+                size_hint_y: None
+                height: self.minimum_height
+                canvas.before:
+                    Color:
+                        rgba: (0.055, 0.065, 0.085, 1)
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
                 Label:
-                    text: 'CLICK SETTINGS'
+                    text: 'APP SETTINGS'
                     bold: True
-                    font_size: '20sp'
-                    color: (1, 0.28, 0.30, 1)
+                    font_size: '22sp'
+                    color: (1, 0.25, 0.30, 1)
                     size_hint_y: None
-                    height: '38dp'
+                    height: dp(38)
                 Label:
-                    text: 'Desktop test settings'
-                    bold: True
-                    font_size: '17sp'
-                    color: (1, 1, 1, 1)
+                    text: 'Settings are saved locally on this device. Accessibility and overlay access are controlled by Android; disable either permission in system Settings whenever you want to stop access.'
+                    text_size: self.width, None
+                    halign: 'left'
+                    valign: 'middle'
+                    color: (0.80, 0.82, 0.86, 1)
                     size_hint_y: None
-                    height: '30dp'
-                BoxLayout:
+                    height: self.texture_size[1] + dp(12)
+                Button:
+                    text: 'Open Android overlay permission'
                     size_hint_y: None
-                    height: '42dp'
-                    Label:
-                        text: 'Tap count'
-                    TextInput:
-                        id: taps_input
-                        text: '50'
-                        input_filter: 'int'
-                        multiline: False
-                        halign: 'center'
-                BoxLayout:
+                    height: dp(48)
+                    on_release: app.open_overlay_settings()
+                Button:
+                    text: 'Open Accessibility settings'
                     size_hint_y: None
-                    height: '42dp'
-                    Label:
-                        text: 'Continuous'
-                    ToggleButton:
-                        id: infinite_toggle
-                        text: 'OFF'
-                        state: 'normal'
-                BoxLayout:
+                    height: dp(48)
+                    on_release: app.open_accessibility_settings()
+                Button:
+                    text: 'Start / restore floating controls'
                     size_hint_y: None
-                    height: '42dp'
-                    Label:
-                        text: 'Delay (seconds)'
-                    Slider:
-                        id: delay_slider
-                        min: 0.02
-                        max: 2.0
-                        value: 0.5
-                        step: 0.01
-                BoxLayout:
+                    height: dp(50)
+                    background_color: (0.78, 0.10, 0.16, 1)
+                    on_release: app.start_native_overlay()
+                Button:
+                    text: 'Save all settings'
                     size_hint_y: None
-                    height: '42dp'
-                    Label:
-                        text: 'Radius'
-                    Slider:
-                        id: radius_slider
-                        min: 0
-                        max: 50
-                        value: 5
-                        step: 1
-                BoxLayout:
+                    height: dp(48)
+                    on_release: app.save_settings()
+                Button:
+                    text: 'Load saved settings'
                     size_hint_y: None
-                    height: '42dp'
-                    Label:
-                        text: 'Click type'
-                    ToggleButton:
-                        id: click_type_toggle
-                        text: 'Single'
-                        state: 'down'
+                    height: dp(48)
+                    on_release: app.load_settings()
                 Label:
-                    id: target_label
-                    text: 'Target: not selected'
+                    text: 'Emergency stop: use the floating panel Stop control. The volume-key stop works only while the configured Accessibility service receives the key event.'
+                    text_size: self.width, None
+                    halign: 'left'
+                    valign: 'middle'
+                    color: (1, 0.72, 0.30, 1)
                     size_hint_y: None
-                    height: '30dp'
-                Label:
-                    id: status_label
-                    text: 'Ready'
-                    size_hint_y: None
-                    height: '30dp'
-                Label:
-                    id: counter_label
-                    text: 'Clicks: 0'
-                    size_hint_y: None
-                    height: '30dp'
-                BoxLayout:
-                    size_hint_y: None
-                    height: '46dp'
-                    Button:
-                        text: 'Save setup'
-                        on_release: app.save_settings()
-                    Button:
-                        text: 'Load setup'
-                        on_release: app.load_settings()
+                    height: self.texture_size[1] + dp(14)
 """
+
 
 
 class QuickSettingsOverlay(ModalView):
@@ -395,7 +594,7 @@ class QuickSettingsOverlay(ModalView):
         self.pos = (max((Window.width - self.width) / 2, 20), max(Window.height - self.height - 20, 20))
 
 
-class AutoClickerRoot(ScrollView):
+class AutoClickerRoot(TabbedPanel):
     pass
 
 
