@@ -217,6 +217,17 @@ KV = """
                         input_filter: 'int'
                         multiline: False
                         halign: 'center'
+                Label:
+                    text: 'Reusable comment (up to 500 characters)'
+                    size_hint_y: None
+                    height: '28dp'
+                    halign: 'left'
+                TextInput:
+                    id: reusable_comment_input
+                    hint_text: 'Write a comment for qualifying videos'
+                    multiline: True
+                    size_hint_y: None
+                    height: '76dp'
                 BoxLayout:
                     size_hint_y: None
                     height: '48dp'
@@ -231,6 +242,11 @@ KV = """
                         text: 'AI suggestions: OFF'
                         state: 'normal'
                         on_release: app.toggle_auto_comment()
+                    ToggleButton:
+                        id: template_comment_toggle
+                        text: 'Reusable comment: OFF'
+                        state: 'normal'
+                        on_release: app.toggle_template_comment()
                 Button:
                     text: 'Save video rules'
                     size_hint_y: None
@@ -428,6 +444,8 @@ class AutoClickerApp(App):
         self.comment_cooldown_input = self.root_widget.ids.comment_cooldown_input
         self.metric_mode_toggle = self.root_widget.ids.metric_mode_toggle
         self.auto_comment_toggle = self.root_widget.ids.auto_comment_toggle
+        self.reusable_comment_input = self.root_widget.ids.reusable_comment_input
+        self.template_comment_toggle = self.root_widget.ids.template_comment_toggle
 
         self.infinite_toggle.bind(on_release=self.on_toggle_infinite)
         self.click_type_toggle.bind(on_release=self.on_toggle_click_type)
@@ -560,7 +578,10 @@ class AutoClickerApp(App):
             service.configureAutomationRules(likes, comments, cooldown,
                 self.metric_mode_toggle.state == 'down',
                 self.auto_comment_toggle.state == 'down')
-            self.ai_status_label.text = 'Video rules saved and applied on this device'
+            service.configureCommentAutomation(self.reusable_comment_input.text,
+                self.template_comment_toggle.state == 'down',
+                self.auto_comment_toggle.state == 'down')
+            self.ai_status_label.text = 'Video and comment rules saved • posting stays manual'
         except Exception as exc:
             self.ai_status_label.text = 'Could not save video rules: ' + str(exc)
 
@@ -575,7 +596,9 @@ class AutoClickerApp(App):
             payload.update({'minimum_likes': likes, 'minimum_comments': comments,
                 'comment_cooldown_seconds': cooldown,
                 'metric_mode': self.metric_mode_toggle.state == 'down',
-                'auto_comment_suggestions': self.auto_comment_toggle.state == 'down'})
+                'auto_comment_suggestions': self.auto_comment_toggle.state == 'down',
+                'reusable_comment': self.reusable_comment_input.text,
+                'template_comment_enabled': self.template_comment_toggle.state == 'down'})
             with open(path, 'w', encoding='utf-8') as fh:
                 json.dump(payload, fh)
         except Exception:
@@ -589,6 +612,11 @@ class AutoClickerApp(App):
     def toggle_auto_comment(self):
         enabled = self.auto_comment_toggle.state == 'down'
         self.auto_comment_toggle.text = 'AI suggestions: ' + ('ON' if enabled else 'OFF')
+        self.save_automation_rules()
+
+    def toggle_template_comment(self):
+        enabled = self.template_comment_toggle.state == 'down'
+        self.template_comment_toggle.text = 'Reusable comment: ' + ('ON' if enabled else 'OFF')
         self.save_automation_rules()
 
     def next_video(self):
@@ -677,6 +705,10 @@ class AutoClickerApp(App):
         self.comment_cooldown_input.text = str(payload.get('comment_cooldown_seconds', 60))
         metric_mode = bool(payload.get('metric_mode', False))
         auto_comments = bool(payload.get('auto_comment_suggestions', False))
+        self.reusable_comment_input.text = str(payload.get('reusable_comment', ''))
+        template_enabled = bool(payload.get('template_comment_enabled', False))
+        self.template_comment_toggle.state = 'down' if template_enabled else 'normal'
+        self.template_comment_toggle.text = 'Reusable comment: ' + ('ON' if template_enabled else 'OFF')
         self.metric_mode_toggle.state = 'down' if metric_mode else 'normal'
         self.metric_mode_toggle.text = 'Metric skip: ' + ('ON' if metric_mode else 'OFF')
         self.auto_comment_toggle.state = 'down' if auto_comments else 'normal'
