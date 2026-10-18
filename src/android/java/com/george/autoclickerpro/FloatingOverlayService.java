@@ -391,7 +391,22 @@ public class FloatingOverlayService extends Service {
         setStatus(label + " • " + tapCount + " taps");
     }
 
-    @Override public int onStartCommand(Intent intent, int flags, int startId) { return START_STICKY; }
+    @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null) {
+            int requestedInterval = intent.getIntExtra("interval_ms", intervalMs);
+            int requestedCount = intent.getIntExtra("tap_count", maxTaps);
+            boolean requestedContinuous = intent.getBooleanExtra(
+                "continuous", continuous != null && continuous.isChecked());
+            intervalMs = Math.max(20, Math.min(60000, requestedInterval));
+            maxTaps = Math.max(1, Math.min(1000000, requestedCount));
+            if (intervalInput != null) intervalInput.setText(String.valueOf(intervalMs));
+            if (countInput != null) countInput.setText(String.valueOf(maxTaps));
+            if (continuous != null) continuous.setChecked(requestedContinuous);
+            if (status != null) setStatus("Settings applied • " + intervalMs + " ms • " +
+                (requestedContinuous ? "continuous" : maxTaps + " taps"));
+        }
+        return START_STICKY;
+    }
 
     @Override public void onDestroy() {
         running = false; active = false; if (instance == this) instance = null; handler.removeCallbacks(clickLoop);
