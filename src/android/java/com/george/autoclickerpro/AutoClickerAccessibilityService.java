@@ -31,9 +31,11 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService aiExecutor = Executors.newSingleThreadExecutor();
     private volatile boolean autoNext = false, autoLike = false;
-    private volatile boolean metricMode = false, autoCommentSuggestions = false;
+    private volatile boolean metricMode = false, autoCommentSuggestions = false, templateCommentEnabled = false;
     private volatile int minimumLikes = 1000, minimumComments = 10;
     private volatile long commentCooldownMs = 60000L, lastCommentSuggestionAt = 0L;
+    private volatile String reusableComment = "", pendingComment = "";
+    private volatile String lastQualifiedSignature = "";
     private String lastScreenSummary = "Vision idle";
     private long lastAutoLikeAt = 0L, lastAutoNextAt = 0L;
 
@@ -46,6 +48,8 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         commentCooldownMs = prefs.getInt("comment_cooldown_seconds", 60) * 1000L;
         metricMode = prefs.getBoolean("metric_mode", false);
         autoCommentSuggestions = prefs.getBoolean("auto_comment_suggestions", false);
+        templateCommentEnabled = prefs.getBoolean("template_comment_enabled", false);
+        reusableComment = prefs.getString("reusable_comment", "");
         FloatingOverlayService.updateVisionStatus("Vision ready • open TikTok");
     }
 
@@ -63,10 +67,27 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             long now = System.currentTimeMillis();
             if (now - lastAutoNextAt >= 4000L) { swipeNext(); lastAutoNextAt = now; }
         }
-        if (autoCommentSuggestions && (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) && likes >= minimumLikes && comments >= minimumComments) {
+        // Prepare comments for qualifying videos; the user always submits manually.
+        if ((templateCommentEnabled || autoCommentSuggestions) &&
+            (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) &&
+            likes >= minimumLikes && comments >= minimumComments) {
+            String signature = screenText.replaceAll("(?i)[0-9,.]+\\s*[kmb]?\\s*(likes?|comments?)", "$2")
+                .replaceAll("\\s+", " ").trim();
+            if (signature.length() > 500) signature = signature.substring(0, 500);
             long now = System.currentTimeMillis();
-            if (now - lastCommentSuggestionAt >= commentCooldownMs) { lastCommentSuggestionAt = now; handler.post(this::analyzeCurrentScreen); }
+            if (!signature.isEmpty() && !signature.equals(lastQualifiedSignature) && now - lastCommentSuggestionAt >= commentCooldownMs) {
+                lastQualifiedSignature = signature;
+                lastCommentSuggestionAt = now;
+                if (templateCommentEnabled && !reusableComment.trim().isEmpty()) {
+                    pendingComment = reusableComment.trim();
+                    fillCommentComposer(root);
+                    FloatingOverlayService.updateVisionStatus("Reusable comment ready • open comment box if needed");
+                } else if (autoCommentSuggestions) {
+                    handler.post(this::analyzeCurrentScreen);
+                }
+            }
         }
+        if (!pendingComment.isEmpty()) fillCommentComposer(root);
         if (!summary.equals(lastScreenSummary)) {
             lastScreenSummary = summary;
             FloatingOverlayService.updateVisionStatus("TikTok detected • " + summary);
@@ -265,13 +286,51 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             suggestion = suggestion.replaceAll("[\\r\\n]+", " ").trim();
             if (suggestion.length() > 220) suggestion = suggestion.substring(0, 217) + "...";
             final String finalSuggestion = suggestion;
-            handler.post(() -> FloatingOverlayService.updateVisionStatus(
-                "AI suggestion (review before posting): " + finalSuggestion));
+            handler.post(() -> {
+                pendingComment = finalSuggestion;
+                AccessibilityNodeInfo activeRoot = getRootInActiveWindow();
+                boolean filled = activeRoot != null && fillCommentComposer(activeRoot);
+                FloatingOverlayService.updateVisionStatus(filled
+                    ? "AI comment filled • review and tap Post yourself"
+                    : "AI comment ready • open TikTok comment box to fill it");
+            });
         } catch (Exception e) {
             FloatingOverlayService.updateVisionStatus("AI request failed • check Internet and API key");
         } finally {
             if (connection != null) connection.disconnect();
         }
+    }
+
+    private boolean fillCommentComposer(AccessibilityNodeInfo node) {
+        if (node == null || pendingComment == null || pendingComment.trim().isEmpty()) return false;
+        CharSequence className = node.getClassName();
+        boolean editable = node.isEditable() || (className != null &&
+            className.toString().toLowerCase(Locale.ROOT).contains("edittext"));
+        if (editable && node.isEnabled() && node.isFocusable()) {
+            android.os.Bundle args = new android.os.Bundle();
+            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, pendingComment);
+            if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) {
+                pendingComment = "";
+                FloatingOverlayService.updateVisionStatus("Comment filled • review and tap Post yourself");
+                return true;
+            }
+        }
+        for (int i=0; i<node.getChildCount(); i++) {
+            if (fillCommentComposer(node.getChild(i))) return true;
+        }
+        return false;
+    }
+
+    public void configureCommentAutomation(String template, boolean useTemplate, boolean useAI) {
+        reusableComment = template == null ? "" : template.trim();
+        if (reusableComment.length() > 500) reusableComment = reusableComment.substring(0, 500);
+        templateCommentEnabled = useTemplate;
+        autoCommentSuggestions = useAI;
+        getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit()
+            .putString("reusable_comment", reusableComment)
+            .putBoolean("template_comment_enabled", templateCommentEnabled)
+            .putBoolean("auto_comment_suggestions", autoCommentSuggestions).apply();
+        FloatingOverlayService.updateVisionStatus("Comment mode saved • posting requires your tap");
     }
 
     public boolean isAutoNext() { return autoNext; }
