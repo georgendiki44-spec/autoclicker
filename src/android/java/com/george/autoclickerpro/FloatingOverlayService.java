@@ -35,6 +35,7 @@ public class FloatingOverlayService extends Service {
     private EditText intervalInput, countInput;
     private CheckBox continuous;
     private TextView visionStatus;
+    private static volatile String latestVisionStatus = "AI ready";
     private int maxTaps = 50;
     private View target;
     private boolean running = false, targetLocked = false, panelHidden = false;
@@ -371,8 +372,13 @@ public class FloatingOverlayService extends Service {
     }
 
     public static void updateVisionStatus(String message) {
+        latestVisionStatus = message == null ? "" : message;
         FloatingOverlayService service = instance;
-        if (service != null) service.handler.post(() -> { if (service.visionStatus != null) service.visionStatus.setText(message); });
+        if (service != null) service.handler.post(() -> { if (service.visionStatus != null) service.visionStatus.setText(latestVisionStatus); });
+    }
+
+    public static String getVisionStatus() {
+        return latestVisionStatus;
     }
 
     public static void stopFromVolumeKey() {
