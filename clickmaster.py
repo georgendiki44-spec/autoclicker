@@ -166,6 +166,78 @@ KV = """
                     size_hint_y: None
                     height: self.texture_size[1] + dp(12)
                 Label:
+                    text: 'SMART VIDEO RULES'
+                    bold: True
+                    font_size: '20sp'
+                    color: (1, 0.28, 0.30, 1)
+                    size_hint_y: None
+                    height: '38dp'
+                Label:
+                    text: 'Metrics are read from TikTok accessibility labels when available. Unknown metrics will not trigger metric-based actions.'
+                    text_size: self.width, None
+                    halign: 'left'
+                    valign: 'middle'
+                    font_size: '13sp'
+                    color: (0.82, 0.84, 0.87, 1)
+                    size_hint_y: None
+                    height: self.texture_size[1] + dp(10)
+                BoxLayout:
+                    size_hint_y: None
+                    height: '44dp'
+                    spacing: '8dp'
+                    Label:
+                        text: 'Minimum likes'
+                    TextInput:
+                        id: min_likes_input
+                        text: '1000'
+                        input_filter: 'int'
+                        multiline: False
+                        halign: 'center'
+                BoxLayout:
+                    size_hint_y: None
+                    height: '44dp'
+                    spacing: '8dp'
+                    Label:
+                        text: 'Minimum comments'
+                    TextInput:
+                        id: min_comments_input
+                        text: '10'
+                        input_filter: 'int'
+                        multiline: False
+                        halign: 'center'
+                BoxLayout:
+                    size_hint_y: None
+                    height: '44dp'
+                    spacing: '8dp'
+                    Label:
+                        text: 'Comment cooldown (sec)'
+                    TextInput:
+                        id: comment_cooldown_input
+                        text: '60'
+                        input_filter: 'int'
+                        multiline: False
+                        halign: 'center'
+                BoxLayout:
+                    size_hint_y: None
+                    height: '48dp'
+                    spacing: '8dp'
+                    ToggleButton:
+                        id: metric_mode_toggle
+                        text: 'Metric skip: OFF'
+                        state: 'normal'
+                        on_release: app.toggle_metric_mode()
+                    ToggleButton:
+                        id: auto_comment_toggle
+                        text: 'AI suggestions: OFF'
+                        state: 'normal'
+                        on_release: app.toggle_auto_comment()
+                Button:
+                    text: 'Save video rules'
+                    size_hint_y: None
+                    height: '46dp'
+                    background_color: (0.78, 0.12, 0.16, 1)
+                    on_release: app.save_automation_rules()
+                Label:
                     text: 'CLICK SETTINGS'
                     bold: True
                     font_size: '20sp'
@@ -351,6 +423,11 @@ class AutoClickerApp(App):
         self.ai_status_label = self.root_widget.ids.ai_status_label
         self.auto_like_button = self.root_widget.ids.auto_like_button
         self.auto_next_button = self.root_widget.ids.auto_next_button
+        self.min_likes_input = self.root_widget.ids.min_likes_input
+        self.min_comments_input = self.root_widget.ids.min_comments_input
+        self.comment_cooldown_input = self.root_widget.ids.comment_cooldown_input
+        self.metric_mode_toggle = self.root_widget.ids.metric_mode_toggle
+        self.auto_comment_toggle = self.root_widget.ids.auto_comment_toggle
 
         self.infinite_toggle.bind(on_release=self.on_toggle_infinite)
         self.click_type_toggle.bind(on_release=self.on_toggle_click_type)
@@ -465,6 +542,55 @@ class AutoClickerApp(App):
         except Exception as exc:
             self.ai_status_label.text = 'Could not change setting: ' + str(exc)
 
+    def _native_accessibility(self):
+        from jnius import autoclass
+        service = autoclass('com.george.autoclickerpro.AutoClickerAccessibilityService')
+        return service.getInstance()
+
+    def save_automation_rules(self):
+        try:
+            likes = max(0, int(self.min_likes_input.text or '1000'))
+            comments = max(0, int(self.min_comments_input.text or '10'))
+            cooldown = max(15, min(86400, int(self.comment_cooldown_input.text or '60')))
+            service = self._native_accessibility()
+            if service is None:
+                self.ai_status_label.text = 'Enable Accessibility service before saving video rules'
+                return
+            service.configureAutomationRules(likes, comments, cooldown,
+                self.metric_mode_toggle.state == 'down',
+                self.auto_comment_toggle.state == 'down')
+            self._save_local_rule_defaults(likes, comments, cooldown)
+            self.ai_status_label.text = 'Video rules saved on this device'
+        except Exception as exc:
+            self.ai_status_label.text = 'Could not save video rules: ' + str(exc)
+
+    def _save_local_rule_defaults(self, likes, comments, cooldown):
+        try:
+            path = get_config_path()
+            try:
+                with open(path, 'r', encoding='utf-8') as fh:
+                    payload = json.load(fh)
+            except (OSError, json.JSONDecodeError):
+                payload = {}
+            payload.update({'minimum_likes': likes, 'minimum_comments': comments,
+                'comment_cooldown_seconds': cooldown,
+                'metric_mode': self.metric_mode_toggle.state == 'down',
+                'auto_comment_suggestions': self.auto_comment_toggle.state == 'down'})
+            with open(path, 'w', encoding='utf-8') as fh:
+                json.dump(payload, fh)
+        except Exception:
+            pass
+
+    def toggle_metric_mode(self):
+        enabled = self.metric_mode_toggle.state == 'down'
+        self.metric_mode_toggle.text = 'Metric skip: ' + ('ON' if enabled else 'OFF')
+        self.save_automation_rules()
+
+    def toggle_auto_comment(self):
+        enabled = self.auto_comment_toggle.state == 'down'
+        self.auto_comment_toggle.text = 'AI suggestions: ' + ('ON' if enabled else 'OFF')
+        self.save_automation_rules()
+
     def next_video(self):
         try:
             from jnius import autoclass
@@ -541,6 +667,15 @@ class AutoClickerApp(App):
         if target and len(target) == 2:
             self.target_x, self.target_y = target
             self.target_label.text = f'Target: ({self.target_x}, {self.target_y})'
+        self.min_likes_input.text = str(payload.get('minimum_likes', 1000))
+        self.min_comments_input.text = str(payload.get('minimum_comments', 10))
+        self.comment_cooldown_input.text = str(payload.get('comment_cooldown_seconds', 60))
+        metric_mode = bool(payload.get('metric_mode', False))
+        auto_comments = bool(payload.get('auto_comment_suggestions', False))
+        self.metric_mode_toggle.state = 'down' if metric_mode else 'normal'
+        self.metric_mode_toggle.text = 'Metric skip: ' + ('ON' if metric_mode else 'OFF')
+        self.auto_comment_toggle.state = 'down' if auto_comments else 'normal'
+        self.auto_comment_toggle.text = 'AI suggestions: ' + ('ON' if auto_comments else 'OFF')
         self.show_status('Settings loaded')
 
     def show_status(self, message):
