@@ -304,9 +304,16 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private boolean fillCommentComposer(AccessibilityNodeInfo node) {
         if (node == null || pendingComment == null || pendingComment.trim().isEmpty()) return false;
         CharSequence className = node.getClassName();
+        CharSequence hint = Build.VERSION.SDK_INT >= 26 ? node.getHintText() : null;
+        CharSequence nodeText = node.getText();
+        CharSequence description = node.getContentDescription();
+        String fieldLabel = ((hint == null ? "" : hint.toString()) + " " +
+            (nodeText == null ? "" : nodeText.toString()) + " " +
+            (description == null ? "" : description.toString())).toLowerCase(Locale.ROOT);
         boolean editable = node.isEditable() || (className != null &&
             className.toString().toLowerCase(Locale.ROOT).contains("edittext"));
-        if (editable && node.isEnabled() && node.isFocusable()) {
+        boolean looksLikeCommentField = fieldLabel.contains("comment") || fieldLabel.contains("add a comment");
+        if (editable && looksLikeCommentField && node.isEnabled() && node.isFocusable()) {
             android.os.Bundle args = new android.os.Bundle();
             args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, pendingComment);
             if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) {
