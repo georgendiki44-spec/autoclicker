@@ -832,11 +832,17 @@ class AutoClickerApp(App):
     def toggle_auto_comment(self):
         enabled = self.auto_comment_toggle.state == 'down'
         self.auto_comment_toggle.text = 'AI suggestions: ' + ('ON' if enabled else 'OFF')
+        if enabled:
+            self.template_comment_toggle.state = 'normal'
+            self.template_comment_toggle.text = 'Reusable comment: OFF'
         self.save_automation_rules()
 
     def toggle_template_comment(self):
         enabled = self.template_comment_toggle.state == 'down'
         self.template_comment_toggle.text = 'Reusable comment: ' + ('ON' if enabled else 'OFF')
+        if enabled:
+            self.auto_comment_toggle.state = 'normal'
+            self.auto_comment_toggle.text = 'AI suggestions: OFF'
         self.save_automation_rules()
 
     def toggle_auto_post_comments(self):
