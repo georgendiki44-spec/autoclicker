@@ -1,5 +1,6 @@
 package com.george.autoclickerpro;
 
+import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -13,6 +14,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
+import android.content.SharedPreferences;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -195,12 +197,27 @@ public class FloatingOverlayService extends Service {
         visionRow.addView(autoLike, new LinearLayout.LayoutParams(0, dp(44), 1));
         panel.addView(visionRow);
 
+        LinearLayout aiRow = new LinearLayout(this);
+        aiRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button aiAnalyze = new Button(this); aiAnalyze.setText("AI Analyze");
+        Button aiKey = new Button(this); aiKey.setText("Gemini Key");
+        aiRow.addView(aiAnalyze, new LinearLayout.LayoutParams(0, dp(44), 1));
+        aiRow.addView(aiKey, new LinearLayout.LayoutParams(0, dp(44), 1));
+        panel.addView(aiRow);
+
         visionStatus = new TextView(this);
         visionStatus.setTextColor(Color.rgb(255, 190, 90));
         visionStatus.setTextSize(11);
         visionStatus.setText("Vision off • open TikTok");
         visionStatus.setPadding(dp(3), dp(4), dp(3), dp(3));
         panel.addView(visionStatus);
+
+        aiKey.setOnClickListener(v -> showGeminiKeyDialog());
+        aiAnalyze.setOnClickListener(v -> {
+            AutoClickerAccessibilityService service = AutoClickerAccessibilityService.getInstance();
+            if (service == null) { updateVisionStatus("Enable Accessibility service first"); return; }
+            service.analyzeCurrentScreen();
+        });
 
         inspect.setOnClickListener(v -> {
             AutoClickerAccessibilityService service = AutoClickerAccessibilityService.getInstance();
@@ -278,6 +295,37 @@ public class FloatingOverlayService extends Service {
         });
         stop.setOnClickListener(v -> stopClicking("Stopped"));
         hide.setOnClickListener(v -> setPanelHidden(true));
+    }
+
+    private void showGeminiKeyDialog() {
+        EditText keyInput = new EditText(this);
+        keyInput.setSingleLine(true);
+        keyInput.setInputType(129);
+        keyInput.setHint("Paste Gemini API key");
+        keyInput.setText(getSharedPreferences("autoclicker_private", MODE_PRIVATE).getString("gemini_api_key", ""));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("Gemini API key")
+            .setMessage("Stored privately on this device. Never share or commit this key.")
+            .setView(keyInput)
+            .setNegativeButton("Cancel", (d, w) -> { })
+            .setNeutralButton("Clear key", (d, w) ->
+                getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit().remove("gemini_api_key").apply())
+            .setPositiveButton("Save", (d, w) -> {
+                String key = keyInput.getText().toString().trim();
+                if (key.isEmpty()) {
+                    getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit().remove("gemini_api_key").apply();
+                    updateVisionStatus("Gemini key cleared");
+                } else {
+                    getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit().putString("gemini_api_key", key).apply();
+                    updateVisionStatus("Gemini key saved on this device");
+                }
+            }).create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setType(Build.VERSION.SDK_INT >= 26
+                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                : WindowManager.LayoutParams.TYPE_PHONE);
+        }
+        dialog.show();
     }
 
     private void styleInput(EditText input) {
