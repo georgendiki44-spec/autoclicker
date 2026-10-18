@@ -691,8 +691,14 @@ class AutoClickerApp(App):
             activity = autoclass('org.kivy.android.PythonActivity').mActivity
             Intent = autoclass('android.content.Intent')
             service = autoclass('com.george.autoclickerpro.FloatingOverlayService')
-            activity.startService(Intent(activity, service))
-            self.show_status('Opening floating controls')
+            intent = Intent(activity, service)
+            interval_ms = max(20, int(float(self.delay_slider.value) * 1000))
+            tap_count = max(1, int(self.taps_input.text or '50'))
+            intent.putExtra('interval_ms', interval_ms)
+            intent.putExtra('tap_count', tap_count)
+            intent.putExtra('continuous', bool(self.infinite_mode))
+            activity.startService(intent)
+            self.show_status('Opening floating controls • click settings sent')
         except Exception as exc:
             self.set_status(f'Allow overlay permission first: {exc}', (1, 0.3, 0.3, 1))
 
@@ -866,6 +872,8 @@ class AutoClickerApp(App):
             'comment_cooldown_seconds': int(self.comment_cooldown_input.text or '60'),
             'metric_mode': self.metric_mode_toggle.state == 'down',
             'auto_comment_suggestions': self.auto_comment_toggle.state == 'down',
+            'reusable_comment': self.reusable_comment_input.text,
+            'template_comment_enabled': self.template_comment_toggle.state == 'down',
         }
         try:
             with open(get_config_path(), 'w', encoding='utf-8') as fh:
@@ -941,6 +949,15 @@ class AutoClickerApp(App):
         self.set_status('Target selected', (0.3, 0.9, 0.7, 1))
 
     def start_clicking(self):
+        # PyAutoGUI cannot control the Android screen from inside the Kivy app.
+        # Do not report fake/virtual taps as successful automation.
+        if pag is None:
+            self.set_status(
+                'No desktop click backend. On Android, use START FLOATING CONTROLS.',
+                (1, 0.6, 0.2, 1),
+            )
+            return
+
         if self.target_x is None or self.target_y is None:
             self.set_status('Please select a target first', (1, 0.6, 0.2, 1))
             return
