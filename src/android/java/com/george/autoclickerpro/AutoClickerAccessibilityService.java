@@ -32,6 +32,10 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private final ExecutorService aiExecutor = Executors.newSingleThreadExecutor();
     private volatile boolean autoNext = false, autoLike = false;
     private volatile boolean metricMode = false, autoCommentSuggestions = false, templateCommentEnabled = false;
+    private volatile boolean autoPostingEnabled = false, postingWorkflowBusy = false, commentSubmitScheduled = false;
+    private volatile int maxCommentsPerSession = 5, submittedCommentCount = 0;
+    private volatile long lastCommentPostedAt = 0L;
+    private volatile String activePostingSignature = "", lastPostedSignature = "";
     private volatile int minimumLikes = 1000, minimumComments = 10;
     private volatile long commentCooldownMs = 60000L, lastCommentSuggestionAt = 0L;
     private volatile String reusableComment = "", pendingComment = "";
@@ -50,7 +54,10 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         autoCommentSuggestions = prefs.getBoolean("auto_comment_suggestions", false);
         templateCommentEnabled = prefs.getBoolean("template_comment_enabled", false);
         reusableComment = prefs.getString("reusable_comment", "");
-        FloatingOverlayService.updateVisionStatus("Vision ready • open TikTok");
+        autoPostingEnabled = prefs.getBoolean("auto_post_comments", false);
+        maxCommentsPerSession = Math.max(1, Math.min(5, prefs.getInt("max_comments_per_session", 5)));
+        submittedCommentCount = 0;
+        FloatingOverlayService.updateVisionStatus("Vision ready • open TikTok • comments submitted this run: 0");
     }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -67,24 +74,25 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             long now = System.currentTimeMillis();
             if (now - lastAutoNextAt >= 4000L) { swipeNext(); lastAutoNextAt = now; }
         }
-        // Prepare comments for qualifying videos; the user always submits manually.
-        if ((templateCommentEnabled || autoCommentSuggestions) &&
-            (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) &&
-            likes >= minimumLikes && comments >= minimumComments) {
-            String signature = screenText.replaceAll("(?i)[0-9,.]+\\s*[kmb]?\\s*(likes?|comments?)", "$1")
-                .replaceAll("\\s+", " ").trim();
-            if (signature.length() > 500) signature = signature.substring(0, 500);
-            long now = System.currentTimeMillis();
-            if (!signature.isEmpty() && !signature.equals(lastQualifiedSignature) && now - lastCommentSuggestionAt >= commentCooldownMs) {
-                lastQualifiedSignature = signature;
-                lastCommentSuggestionAt = now;
-                if (templateCommentEnabled && !reusableComment.trim().isEmpty()) {
-                    pendingComment = reusableComment.trim();
-                    fillCommentComposer(root);
-                    FloatingOverlayService.updateVisionStatus("Reusable comment ready • open comment box if needed");
-                } else if (autoCommentSuggestions) {
-                    handler.post(this::analyzeCurrentScreen);
+        // Auto-post only when both engagement metrics are positively detected and meet thresholds.
+        boolean contentChanged = event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
+            event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+        String signature = screenText.replaceAll("(?i)[0-9,.]+\\s*[kmb]?\\s*(likes?|comments?)", "$1")
+            .replaceAll("\\s+", " ").trim();
+        if (signature.length() > 500) signature = signature.substring(0, 500);
+        if (autoPostingEnabled && contentChanged && !postingWorkflowBusy &&
+            submittedCommentCount < maxCommentsPerSession) {
+            if (likes >= minimumLikes && comments >= minimumComments && likes >= 0 && comments >= 0) {
+                long now = System.currentTimeMillis();
+                if (!signature.isEmpty() && !signature.equals(lastPostedSignature) &&
+                    now - lastCommentPostedAt >= Math.max(60000L, commentCooldownMs)) {
+                    beginAutoComment(root, signature);
                 }
+            } else if (likes >= 0 && comments >= 0 && (likes < minimumLikes || comments < minimumComments)) {
+                FloatingOverlayService.updateVisionStatus("Skipped: metrics below minimum • " + likes +
+                    " likes / " + comments + " comments");
+            } else {
+                FloatingOverlayService.updateVisionStatus("Waiting: engagement metrics not clearly detected");
             }
         }
         if (!pendingComment.isEmpty()) fillCommentComposer(root);
@@ -291,7 +299,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
                 AccessibilityNodeInfo activeRoot = getRootInActiveWindow();
                 boolean filled = activeRoot != null && fillCommentComposer(activeRoot);
                 FloatingOverlayService.updateVisionStatus(filled
-                    ? "AI comment filled • review and tap Post yourself"
+                    ? (autoPostingEnabled && postingWorkflowBusy ? "AI comment filled • preparing submit" : "AI comment filled • review before posting")
                     : "AI comment ready • open TikTok comment box to fill it");
             });
         } catch (Exception e) {
@@ -318,7 +326,11 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, pendingComment);
             if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) {
                 pendingComment = "";
-                FloatingOverlayService.updateVisionStatus("Comment filled • review and tap Post yourself");
+                FloatingOverlayService.updateVisionStatus("Comment text entered");
+                if (autoPostingEnabled && postingWorkflowBusy && !commentSubmitScheduled) {
+                    commentSubmitScheduled = true;
+                    handler.postDelayed(this::submitCommentAndAdvance, 1200L);
+                }
                 return true;
             }
         }
@@ -326,6 +338,164 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             if (fillCommentComposer(node.getChild(i))) return true;
         }
         return false;
+    }
+
+    private void beginAutoComment(AccessibilityNodeInfo root, String signature) {
+        if (!autoPostingEnabled || postingWorkflowBusy || submittedCommentCount >= maxCommentsPerSession) return;
+        if (!templateCommentEnabled && !autoCommentSuggestions) {
+            FloatingOverlayService.updateVisionStatus("Choose reusable comment or AI mode first");
+            return;
+        }
+        if (templateCommentEnabled && reusableComment.trim().isEmpty()) {
+            FloatingOverlayService.updateVisionStatus("Reusable comment is empty");
+            return;
+        }
+        postingWorkflowBusy = true;
+        commentSubmitScheduled = false;
+        activePostingSignature = signature;
+        lastCommentSuggestionAt = System.currentTimeMillis();
+        pendingComment = templateCommentEnabled ? reusableComment.trim() : "";
+        FloatingOverlayService.updateVisionStatus("Qualifying post • opening comments (" + (submittedCommentCount + 1) +
+            "/" + maxCommentsPerSession + ")");
+        if (hasCommentComposer(root)) {
+            continueAutoComment();
+        } else if (clickCommentsButton(root)) {
+            handler.postDelayed(this::continueAutoComment, 900L);
+        } else {
+            resetPostingWorkflow("Could not locate the comments control; skipped safely");
+        }
+    }
+
+    private void continueAutoComment() {
+        if (!postingWorkflowBusy || !autoPostingEnabled) return;
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null || root.getPackageName() == null || !isTikTokPackage(root.getPackageName().toString())) {
+            resetPostingWorkflow("Posting paused: TikTok is no longer active");
+            return;
+        }
+        if (templateCommentEnabled && !reusableComment.trim().isEmpty()) {
+            pendingComment = reusableComment.trim();
+            if (!fillCommentComposer(root)) handler.postDelayed(this::continueAutoComment, 700L);
+        } else if (autoCommentSuggestions) {
+            analyzeCurrentScreen();
+        } else {
+            resetPostingWorkflow("Select a comment mode first");
+        }
+    }
+
+    private boolean hasCommentComposer(AccessibilityNodeInfo node) {
+        if (node == null) return false;
+        CharSequence cls = node.getClassName();
+        CharSequence hint = Build.VERSION.SDK_INT >= 26 ? node.getHintText() : null;
+        CharSequence desc = node.getContentDescription();
+        String label = ((hint == null ? "" : hint.toString()) + " " +
+            (desc == null ? "" : desc.toString())).toLowerCase(Locale.ROOT);
+        boolean editable = node.isEditable() || (cls != null && cls.toString().toLowerCase(Locale.ROOT).contains("edittext"));
+        if (editable && (label.contains("comment") || label.contains("add a comment"))) return true;
+        for (int i=0; i<node.getChildCount(); i++) if (hasCommentComposer(node.getChild(i))) return true;
+        return false;
+    }
+
+    private boolean clickCommentsButton(AccessibilityNodeInfo node) {
+        if (node == null) return false;
+        CharSequence text = node.getText();
+        CharSequence desc = node.getContentDescription();
+        CharSequence cls = node.getClassName();
+        String label = ((text == null ? "" : text.toString()) + " " +
+            (desc == null ? "" : desc.toString())).toLowerCase(Locale.ROOT).trim();
+        boolean editable = node.isEditable() || (cls != null && cls.toString().toLowerCase(Locale.ROOT).contains("edittext"));
+        boolean commentControl = !editable && (label.matches(".*\\bcomments?\\b.*") || label.contains("view comments"));
+        if (commentControl && node.isEnabled() && node.isClickable() && !label.contains("post comment")) {
+            if (node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true;
+        }
+        for (int i=0; i<node.getChildCount(); i++) if (clickCommentsButton(node.getChild(i))) return true;
+        return false;
+    }
+
+    private boolean clickPostButton(AccessibilityNodeInfo node) {
+        if (node == null) return false;
+        CharSequence text = node.getText();
+        CharSequence desc = node.getContentDescription();
+        CharSequence cls = node.getClassName();
+        String label = ((text == null ? "" : text.toString()) + " " +
+            (desc == null ? "" : desc.toString())).toLowerCase(Locale.ROOT).trim();
+        String classLabel = cls == null ? "" : cls.toString().toLowerCase(Locale.ROOT);
+        boolean buttonLike = node.isClickable() && (classLabel.contains("button") || node.isClickable());
+        if (buttonLike && node.isEnabled() && (label.equals("post") || label.equals("post comment") ||
+            label.equals("send") || label.equals("send comment"))) {
+            return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        }
+        for (int i=0; i<node.getChildCount(); i++) if (clickPostButton(node.getChild(i))) return true;
+        return false;
+    }
+
+    private void submitCommentAndAdvance() {
+        commentSubmitScheduled = false;
+        if (!autoPostingEnabled || !postingWorkflowBusy) return;
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null || root.getPackageName() == null || !isTikTokPackage(root.getPackageName().toString())) {
+            resetPostingWorkflow("Posting cancelled: TikTok is no longer active");
+            return;
+        }
+        if (!clickPostButton(root)) {
+            resetPostingWorkflow("Post button not recognized • comment was not submitted");
+            return;
+        }
+        submittedCommentCount++;
+        lastPostedSignature = activePostingSignature;
+        lastCommentPostedAt = System.currentTimeMillis();
+        FloatingOverlayService.updateVisionStatus("Submit tapped • count " + submittedCommentCount + "/" +
+            maxCommentsPerSession + " • moving to next post");
+        postingWorkflowBusy = false;
+        pendingComment = "";
+        handler.postDelayed(() -> {
+            if (!autoPostingEnabled) return;
+            performGlobalAction(GLOBAL_ACTION_BACK);
+            handler.postDelayed(() -> {
+                if (!autoPostingEnabled) return;
+                if (submittedCommentCount >= maxCommentsPerSession) {
+                    autoPostingEnabled = false;
+                    getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit().putBoolean("auto_post_comments", false).apply();
+                    FloatingOverlayService.updateVisionStatus("Session limit reached • " + submittedCommentCount + " comments submitted");
+                } else {
+                    swipeNext();
+                    handler.postDelayed(() -> {
+                        if (autoPostingEnabled) FloatingOverlayService.updateVisionStatus("Next post • submitted " +
+                            submittedCommentCount + "/" + maxCommentsPerSession + " • checking metrics");
+                    }, 900L);
+                }
+            }, 650L);
+        }, 500L);
+    }
+
+    private void resetPostingWorkflow(String message) {
+        postingWorkflowBusy = false;
+        commentSubmitScheduled = false;
+        pendingComment = "";
+        FloatingOverlayService.updateVisionStatus(message);
+    }
+
+    public int getSubmittedCommentCount() { return submittedCommentCount; }
+    public boolean isAutoPostingEnabled() { return autoPostingEnabled; }
+
+    public void configureCommentPosting(boolean enabled, int maxPerSession) {
+        autoPostingEnabled = enabled;
+        maxCommentsPerSession = Math.max(1, Math.min(5, maxPerSession));
+        if (!enabled) {
+            postingWorkflowBusy = false;
+            commentSubmitScheduled = false;
+            pendingComment = "";
+        } else {
+            submittedCommentCount = 0;
+            lastPostedSignature = "";
+            lastCommentPostedAt = 0L;
+        }
+        getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit()
+            .putBoolean("auto_post_comments", autoPostingEnabled)
+            .putInt("max_comments_per_session", maxCommentsPerSession).apply();
+        FloatingOverlayService.updateVisionStatus(enabled
+            ? "Auto-comment ON • max " + maxCommentsPerSession + " posts per run • stop anytime"
+            : "Auto-comment OFF • submitted this run: " + submittedCommentCount);
     }
 
     public void configureCommentAutomation(String template, boolean useTemplate, boolean useAI) {
@@ -337,7 +507,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             .putString("reusable_comment", reusableComment)
             .putBoolean("template_comment_enabled", templateCommentEnabled)
             .putBoolean("auto_comment_suggestions", autoCommentSuggestions).apply();
-        FloatingOverlayService.updateVisionStatus("Comment mode saved • posting requires your tap");
+        FloatingOverlayService.updateVisionStatus("Comment mode saved • auto-post " + (autoPostingEnabled ? "ON" : "OFF"));
     }
 
     public boolean isAutoNext() { return autoNext; }
@@ -424,7 +594,9 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     @Override public boolean onKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN &&
             (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_DOWN || event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP)) {
-            autoNext = false; autoLike = false; handler.removeCallbacks(autoNextTask);
+            autoNext = false; autoLike = false; autoPostingEnabled = false; postingWorkflowBusy = false;
+            handler.removeCallbacks(autoNextTask);
+            getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit().putBoolean("auto_post_comments", false).apply();
             FloatingOverlayService.stopFromVolumeKey();
             FloatingOverlayService.updateVisionStatus("Emergency stop • automation off");
             return true;
