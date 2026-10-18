@@ -400,7 +400,7 @@ KV = """
                     size_hint_y: None
                     height: dp(38)
                 Label:
-                    text: 'Choose reusable text or AI suggestions. The app may fill the comment composer when supported; posting remains a manual action.'
+                    text: 'Choose reusable text or AI. Auto-post checks both metrics, uses a cooldown, and stops after the session limit.'
                     text_size: self.width, None
                     halign: 'left'
                     valign: 'middle'
@@ -432,6 +432,18 @@ KV = """
                         text: 'AI suggestions: OFF'
                         state: 'normal'
                         on_release: app.toggle_auto_comment()
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(48)
+                    spacing: dp(8)
+                    ToggleButton:
+                        id: auto_post_comments_toggle
+                        text: 'Auto-post: OFF'
+                        state: 'normal'
+                        on_release: app.toggle_auto_post_comments()
+                    Label:
+                        text: 'Max 5 per run'
+                        halign: 'center'
                 BoxLayout:
                     size_hint_y: None
                     height: dp(46)
@@ -644,6 +656,7 @@ class AutoClickerApp(App):
         self.auto_comment_toggle = self.root_widget.ids.auto_comment_toggle
         self.reusable_comment_input = self.root_widget.ids.reusable_comment_input
         self.template_comment_toggle = self.root_widget.ids.template_comment_toggle
+        self.auto_post_comments_toggle = self.root_widget.ids.auto_post_comments_toggle
 
         self.infinite_toggle.bind(on_release=self.on_toggle_infinite)
         self.click_type_toggle.bind(on_release=self.on_toggle_click_type)
@@ -785,7 +798,8 @@ class AutoClickerApp(App):
             service.configureCommentAutomation(self.reusable_comment_input.text,
                 self.template_comment_toggle.state == 'down',
                 self.auto_comment_toggle.state == 'down')
-            self.ai_status_label.text = 'Video and comment rules saved • posting stays manual'
+            service.configureCommentPosting(self.auto_post_comments_toggle.state == 'down', 5)
+            self.ai_status_label.text = 'Rules saved • auto-post is capped at 5 submissions per run'
         except Exception as exc:
             self.ai_status_label.text = 'Could not save video rules: ' + str(exc)
 
@@ -802,7 +816,9 @@ class AutoClickerApp(App):
                 'metric_mode': self.metric_mode_toggle.state == 'down',
                 'auto_comment_suggestions': self.auto_comment_toggle.state == 'down',
                 'reusable_comment': self.reusable_comment_input.text,
-                'template_comment_enabled': self.template_comment_toggle.state == 'down'})
+                'template_comment_enabled': self.template_comment_toggle.state == 'down',
+                'auto_post_comments': self.auto_post_comments_toggle.state == 'down',
+                'max_comments_per_session': 5})
             with open(path, 'w', encoding='utf-8') as fh:
                 json.dump(payload, fh)
         except Exception:
@@ -821,6 +837,11 @@ class AutoClickerApp(App):
     def toggle_template_comment(self):
         enabled = self.template_comment_toggle.state == 'down'
         self.template_comment_toggle.text = 'Reusable comment: ' + ('ON' if enabled else 'OFF')
+        self.save_automation_rules()
+
+    def toggle_auto_post_comments(self):
+        enabled = self.auto_post_comments_toggle.state == 'down'
+        self.auto_post_comments_toggle.text = 'Auto-post: ' + ('ON' if enabled else 'OFF')
         self.save_automation_rules()
 
     def next_video(self):
@@ -874,6 +895,8 @@ class AutoClickerApp(App):
             'auto_comment_suggestions': self.auto_comment_toggle.state == 'down',
             'reusable_comment': self.reusable_comment_input.text,
             'template_comment_enabled': self.template_comment_toggle.state == 'down',
+            'auto_post_comments': self.auto_post_comments_toggle.state == 'down',
+            'max_comments_per_session': 5,
         }
         try:
             with open(get_config_path(), 'w', encoding='utf-8') as fh:
@@ -913,6 +936,9 @@ class AutoClickerApp(App):
         auto_comments = bool(payload.get('auto_comment_suggestions', False))
         self.reusable_comment_input.text = str(payload.get('reusable_comment', ''))
         template_enabled = bool(payload.get('template_comment_enabled', False))
+        auto_post_enabled = bool(payload.get('auto_post_comments', False))
+        self.auto_post_comments_toggle.state = 'down' if auto_post_enabled else 'normal'
+        self.auto_post_comments_toggle.text = 'Auto-post: ' + ('ON' if auto_post_enabled else 'OFF')
         self.template_comment_toggle.state = 'down' if template_enabled else 'normal'
         self.template_comment_toggle.text = 'Reusable comment: ' + ('ON' if template_enabled else 'OFF')
         self.metric_mode_toggle.state = 'down' if metric_mode else 'normal'
