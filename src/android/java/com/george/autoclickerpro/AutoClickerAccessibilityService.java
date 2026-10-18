@@ -13,6 +13,8 @@ import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,12 +31,21 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService aiExecutor = Executors.newSingleThreadExecutor();
     private volatile boolean autoNext = false, autoLike = false;
+    private volatile boolean metricMode = false, autoCommentSuggestions = false;
+    private volatile int minimumLikes = 1000, minimumComments = 10;
+    private volatile long commentCooldownMs = 60000L, lastCommentSuggestionAt = 0L;
     private String lastScreenSummary = "Vision idle";
     private long lastAutoLikeAt = 0L, lastAutoNextAt = 0L;
 
     public static AutoClickerAccessibilityService getInstance() { return instance; }
     @Override protected void onServiceConnected() {
         super.onServiceConnected(); instance = this;
+        android.content.SharedPreferences prefs = getSharedPreferences("autoclicker_private", MODE_PRIVATE);
+        minimumLikes = prefs.getInt("minimum_likes", 1000);
+        minimumComments = prefs.getInt("minimum_comments", 10);
+        commentCooldownMs = prefs.getInt("comment_cooldown_seconds", 60) * 1000L;
+        metricMode = prefs.getBoolean("metric_mode", false);
+        autoCommentSuggestions = prefs.getBoolean("auto_comment_suggestions", false);
         FloatingOverlayService.updateVisionStatus("Vision ready • open TikTok");
     }
 
@@ -45,6 +56,17 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         boolean tikTok = pkg != null && isTikTokPackage(pkg.toString());
         if (!tikTok) { FloatingOverlayService.updateVisionStatus("Waiting for TikTok"); return; }
         String summary = describeScreen(root);
+        String screenText = collectScreenText(root);
+        int likes = extractMetric(screenText, "likes?");
+        int comments = extractMetric(screenText, "comments?");
+        if (metricMode && autoNext && (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) && likes >= 0 && comments >= 0 && (likes < minimumLikes || comments < minimumComments)) {
+            long now = System.currentTimeMillis();
+            if (now - lastAutoNextAt >= 4000L) { swipeNext(); lastAutoNextAt = now; }
+        }
+        if (autoCommentSuggestions && (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED || event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) && likes >= minimumLikes && comments >= minimumComments) {
+            long now = System.currentTimeMillis();
+            if (now - lastCommentSuggestionAt >= commentCooldownMs) { lastCommentSuggestionAt = now; handler.post(this::analyzeCurrentScreen); }
+        }
         if (!summary.equals(lastScreenSummary)) {
             lastScreenSummary = summary;
             FloatingOverlayService.updateVisionStatus("TikTok detected • " + summary);
@@ -60,6 +82,26 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private boolean isTikTokPackage(String packageName) {
         String p = packageName.toLowerCase(Locale.ROOT);
         return p.contains("tiktok") || p.contains("musically");
+    }
+
+    private String collectScreenText(AccessibilityNodeInfo root) {
+        StringBuilder out = new StringBuilder(); collectLabels(root, out, 0); return out.toString();
+    }
+
+    private int extractMetric(String text, String metricWord) {
+        if (text == null) return -1;
+        Pattern pattern = Pattern.compile("(?i)([0-9]+(?:\\.[0-9]+)?\\s*[kmb]?)\\s*" + metricWord + "|" + metricWord + "\\s*[: ]\\s*([0-9]+(?:\\.[0-9]+)?\\s*[kmb]?)");
+        Matcher matcher = pattern.matcher(text.replace(",", ""));
+        if (!matcher.find()) return -1;
+        String raw = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+        raw = raw.replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
+        try {
+            double multiplier = 1;
+            if (raw.endsWith("K")) { multiplier = 1000; raw = raw.substring(0, raw.length()-1); }
+            else if (raw.endsWith("M")) { multiplier = 1000000; raw = raw.substring(0, raw.length()-1); }
+            else if (raw.endsWith("B")) { multiplier = 1000000000; raw = raw.substring(0, raw.length()-1); }
+            return (int)Math.min(Integer.MAX_VALUE, Double.parseDouble(raw) * multiplier);
+        } catch (Exception ignored) { return -1; }
     }
 
     private String describeScreen(AccessibilityNodeInfo root) {
@@ -233,6 +275,21 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
 
     public boolean isAutoNext() { return autoNext; }
     public boolean isAutoLike() { return autoLike; }
+    public boolean isMetricMode() { return metricMode; }
+    public boolean isAutoCommentSuggestions() { return autoCommentSuggestions; }
+
+    public void configureAutomationRules(int likes, int comments, int cooldownSeconds, boolean useMetrics, boolean suggestComments) {
+        minimumLikes = Math.max(0, Math.min(likes, 1000000000));
+        minimumComments = Math.max(0, Math.min(comments, 1000000000));
+        commentCooldownMs = Math.max(15, Math.min(cooldownSeconds, 86400)) * 1000L;
+        metricMode = useMetrics;
+        autoCommentSuggestions = suggestComments;
+        getSharedPreferences("autoclicker_private", MODE_PRIVATE).edit()
+            .putInt("minimum_likes", minimumLikes).putInt("minimum_comments", minimumComments)
+            .putInt("comment_cooldown_seconds", (int)(commentCooldownMs / 1000L))
+            .putBoolean("metric_mode", metricMode).putBoolean("auto_comment_suggestions", autoCommentSuggestions).apply();
+        FloatingOverlayService.updateVisionStatus("Rules saved • min likes " + minimumLikes + ", comments " + minimumComments);
+    }
 
     public void refreshVision() {
         AccessibilityNodeInfo root = getRootInActiveWindow();
