@@ -171,6 +171,13 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
      * Captures the current TikTok screen and asks Gemini for one relevant comment idea.
      * Posting is intentionally left to the user so the app cannot publish unwanted comments.
      */
+    private void aiWorkflowFailed(String message) {
+        handler.post(() -> {
+            if (autoPostingEnabled && postingWorkflowBusy) resetPostingWorkflow(message);
+            else FloatingOverlayService.updateVisionStatus(message);
+        });
+    }
+
     public void analyzeCurrentScreen() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             FloatingOverlayService.updateVisionStatus("AI screen analysis requires Android 11+");
@@ -183,7 +190,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         String apiKey = getSharedPreferences("autoclicker_private", MODE_PRIVATE)
             .getString("gemini_api_key", "").trim();
         if (apiKey.isEmpty()) {
-            FloatingOverlayService.updateVisionStatus("Tap Gemini Key and save your API key first");
+            aiWorkflowFailed("Tap Gemini Key and save your API key first");
             return;
         }
         FloatingOverlayService.updateVisionStatus("Capturing video screen for Gemini…");
@@ -197,25 +204,25 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
                         ColorSpace colorSpace = result.getColorSpace();
                         hardwareBitmap = Bitmap.wrapHardwareBuffer(buffer, colorSpace);
                         if (hardwareBitmap == null) {
-                            FloatingOverlayService.updateVisionStatus("Could not read screenshot");
+                            aiWorkflowFailed("Could not read screenshot");
                             return;
                         }
                         bitmap = hardwareBitmap.copy(Bitmap.Config.ARGB_8888, false);
                         if (bitmap == null) {
-                            FloatingOverlayService.updateVisionStatus("Could not prepare screenshot");
+                            aiWorkflowFailed("Could not prepare screenshot");
                             return;
                         }
                         final Bitmap captured = bitmap;
                         aiExecutor.execute(() -> sendFrameToGemini(captured, apiKey));
                     } catch (Exception e) {
-                        FloatingOverlayService.updateVisionStatus("Screenshot processing failed");
+                        aiWorkflowFailed("Screenshot processing failed");
                     } finally {
                         if (buffer != null) buffer.close();
                         if (hardwareBitmap != null) hardwareBitmap.recycle();
                     }
                 }
                 @Override public void onFailure(int errorCode) {
-                    FloatingOverlayService.updateVisionStatus("Android screenshot failed (" + errorCode + ")");
+                    aiWorkflowFailed("Android screenshot failed (" + errorCode + ")");
                 }
             });
     }
@@ -269,13 +276,13 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
                 String message = status == 401 || status == 403 ? "Gemini rejected the key; check API key/project access"
                     : status == 429 ? "Gemini free quota/rate limit reached; wait and retry"
                     : "Gemini request failed (HTTP " + status + ")";
-                FloatingOverlayService.updateVisionStatus(message);
+                aiWorkflowFailed(message);
                 return;
             }
             JSONObject response = new JSONObject(responseText.toString());
             JSONArray candidates = response.optJSONArray("candidates");
             if (candidates == null || candidates.length() == 0) {
-                FloatingOverlayService.updateVisionStatus("Gemini returned no comment suggestion");
+                aiWorkflowFailed("Gemini returned no comment suggestion");
                 return;
             }
             JSONObject content = candidates.getJSONObject(0).optJSONObject("content");
@@ -288,7 +295,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
                 }
             }
             if (suggestion.isEmpty()) {
-                FloatingOverlayService.updateVisionStatus("Gemini returned an empty suggestion");
+                aiWorkflowFailed("Gemini returned an empty suggestion");
                 return;
             }
             suggestion = suggestion.replaceAll("[\\r\\n]+", " ").trim();
@@ -316,7 +323,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
                 }
             });
         } catch (Exception e) {
-            FloatingOverlayService.updateVisionStatus("AI request failed • check Internet and API key");
+            aiWorkflowFailed("AI request failed • check Internet and API key");
         } finally {
             if (connection != null) connection.disconnect();
         }
