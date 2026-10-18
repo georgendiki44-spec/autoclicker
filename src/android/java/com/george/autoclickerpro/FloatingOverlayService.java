@@ -322,7 +322,12 @@ public class FloatingOverlayService extends Service {
         if (chip != null) chip.setText(hidden ? "≡" : "×");
     }
 
-    public static void updateVisionStatus(String message) {\n        FloatingOverlayService service = instance;\n        if (service != null) service.handler.post(() -> { if (service.visionStatus != null) service.visionStatus.setText(message); });\n    }\n\n    public static void stopFromVolumeKey() {
+    public static void updateVisionStatus(String message) {
+        FloatingOverlayService service = instance;
+        if (service != null) service.handler.post(() -> { if (service.visionStatus != null) service.visionStatus.setText(message); });
+    }
+
+    public static void stopFromVolumeKey() {
         FloatingOverlayService service = instance;
         if (service != null) service.handler.post(() -> service.stopClicking("Stopped by volume key"));
     }
