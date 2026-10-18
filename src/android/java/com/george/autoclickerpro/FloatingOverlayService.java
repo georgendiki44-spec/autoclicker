@@ -32,6 +32,7 @@ public class FloatingOverlayService extends Service {
     private TextView status, chip;
     private EditText intervalInput, countInput;
     private CheckBox continuous;
+    private TextView visionStatus;
     private int maxTaps = 50;
     private View target;
     private boolean running = false, targetLocked = false, panelHidden = false;
@@ -182,6 +183,53 @@ public class FloatingOverlayService extends Service {
         row.addView(hide, new LinearLayout.LayoutParams(0, dp(46), 1));
         panel.addView(row);
 
+        LinearLayout visionRow = new LinearLayout(this);
+        visionRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button inspect = new Button(this); inspect.setText("Vision");
+        Button next = new Button(this); next.setText("Next");
+        Button autoNext = new Button(this); autoNext.setText("Auto next");
+        Button autoLike = new Button(this); autoLike.setText("Auto like");
+        visionRow.addView(inspect, new LinearLayout.LayoutParams(0, dp(44), 1));
+        visionRow.addView(next, new LinearLayout.LayoutParams(0, dp(44), 1));
+        visionRow.addView(autoNext, new LinearLayout.LayoutParams(0, dp(44), 1));
+        visionRow.addView(autoLike, new LinearLayout.LayoutParams(0, dp(44), 1));
+        panel.addView(visionRow);
+
+        visionStatus = new TextView(this);
+        visionStatus.setTextColor(Color.rgb(255, 190, 90));
+        visionStatus.setTextSize(11);
+        visionStatus.setText("Vision off • open TikTok");
+        visionStatus.setPadding(dp(3), dp(4), dp(3), dp(3));
+        panel.addView(visionStatus);
+
+        inspect.setOnClickListener(v -> {
+            AutoClickerAccessibilityService service = AutoClickerAccessibilityService.getInstance();
+            if (service == null) {
+                setStatus("Enable Accessibility service for screen vision");
+                Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i);
+            } else service.refreshVision();
+        });
+        next.setOnClickListener(v -> {
+            AutoClickerAccessibilityService service = AutoClickerAccessibilityService.getInstance();
+            if (service == null) { setStatus("Enable Accessibility service first"); return; }
+            service.nextVideo();
+        });
+        autoNext.setOnClickListener(v -> {
+            AutoClickerAccessibilityService service = AutoClickerAccessibilityService.getInstance();
+            if (service == null) { setStatus("Enable Accessibility service first"); return; }
+            boolean enabled = !service.isAutoNext();
+            service.setAutoNext(enabled);
+            autoNext.setText(enabled ? "Auto next ✓" : "Auto next");
+        });
+        autoLike.setOnClickListener(v -> {
+            AutoClickerAccessibilityService service = AutoClickerAccessibilityService.getInstance();
+            if (service == null) { setStatus("Enable Accessibility service first"); return; }
+            boolean enabled = !service.isAutoLike();
+            service.setAutoLike(enabled);
+            autoLike.setText(enabled ? "Auto like ✓" : "Auto like");
+        });
+
         panelParams = params(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN, Gravity.TOP | Gravity.START);
@@ -274,7 +322,7 @@ public class FloatingOverlayService extends Service {
         if (chip != null) chip.setText(hidden ? "≡" : "×");
     }
 
-    public static void stopFromVolumeKey() {
+    public static void updateVisionStatus(String message) {\n        FloatingOverlayService service = instance;\n        if (service != null) service.handler.post(() -> { if (service.visionStatus != null) service.visionStatus.setText(message); });\n    }\n\n    public static void stopFromVolumeKey() {
         FloatingOverlayService service = instance;
         if (service != null) service.handler.post(() -> service.stopClicking("Stopped by volume key"));
     }
