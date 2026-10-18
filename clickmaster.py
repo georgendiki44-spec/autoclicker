@@ -552,15 +552,15 @@ class AutoClickerApp(App):
             likes = max(0, int(self.min_likes_input.text or '1000'))
             comments = max(0, int(self.min_comments_input.text or '10'))
             cooldown = max(15, min(86400, int(self.comment_cooldown_input.text or '60')))
+            self._save_local_rule_defaults(likes, comments, cooldown)
             service = self._native_accessibility()
             if service is None:
-                self.ai_status_label.text = 'Enable Accessibility service before saving video rules'
+                self.ai_status_label.text = 'Rules saved in app. Enable Accessibility to activate automation.'
                 return
             service.configureAutomationRules(likes, comments, cooldown,
                 self.metric_mode_toggle.state == 'down',
                 self.auto_comment_toggle.state == 'down')
-            self._save_local_rule_defaults(likes, comments, cooldown)
-            self.ai_status_label.text = 'Video rules saved on this device'
+            self.ai_status_label.text = 'Video rules saved and applied on this device'
         except Exception as exc:
             self.ai_status_label.text = 'Could not save video rules: ' + str(exc)
 
