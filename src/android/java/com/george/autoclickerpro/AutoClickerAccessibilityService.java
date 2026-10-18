@@ -28,7 +28,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) return;
         CharSequence pkg = root.getPackageName();
-        boolean tikTok = pkg != null && pkg.toString().toLowerCase(Locale.ROOT).contains("tiktok");
+        boolean tikTok = pkg != null && isTikTokPackage(pkg.toString());
         if (!tikTok) { FloatingOverlayService.updateVisionStatus("Waiting for TikTok"); return; }
         String summary = describeScreen(root);
         if (!summary.equals(lastScreenSummary)) {
@@ -43,7 +43,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         }
     }
 
-    private String describeScreen(AccessibilityNodeInfo root) {
+    private boolean isTikTokPackage(String packageName) {\n        String p = packageName.toLowerCase(Locale.ROOT);\n        return p.contains("tiktok") || p.contains("musically");\n    }\n\n    private String describeScreen(AccessibilityNodeInfo root) {
         StringBuilder out = new StringBuilder(); collectLabels(root, out, 0);
         String s = out.toString().toLowerCase(Locale.ROOT);
         if (s.contains("for you")) return "For You feed";
@@ -81,7 +81,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     public void refreshVision() {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null || root.getPackageName() == null ||
-            !root.getPackageName().toString().toLowerCase(Locale.ROOT).contains("tiktok")) {
+            !isTikTokPackage(root.getPackageName().toString())) {
             FloatingOverlayService.updateVisionStatus("Open TikTok to inspect screen");
             return;
         }
@@ -118,7 +118,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private boolean isTikTokForeground() {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         return root != null && root.getPackageName() != null &&
-            root.getPackageName().toString().toLowerCase(Locale.ROOT).contains("tiktok");
+            isTikTokPackage(root.getPackageName().toString());
     }
 
     private void swipeNext() {
