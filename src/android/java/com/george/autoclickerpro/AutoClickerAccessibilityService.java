@@ -73,7 +73,8 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         }
         if (autoLike && event != null &&
             (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
-             event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)) {
+             event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) &&
+            (!metricMode || (likes >= minimumLikes && comments >= minimumComments))) {
             long now = System.currentTimeMillis();
             if (now - lastAutoLikeAt > 1800L && clickUnlikedLikeButton(root)) lastAutoLikeAt = now;
         }
@@ -321,7 +322,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         @Override public void run() {
             if (!autoNext) return;
             long now = System.currentTimeMillis();
-            if (isTikTokForeground() && now - lastAutoNextAt >= 12000L) {
+            if (!metricMode && isTikTokForeground() && now - lastAutoNextAt >= 12000L) {
                 swipeNext(); lastAutoNextAt = now;
             }
             handler.postDelayed(this, 1000L);
