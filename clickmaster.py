@@ -625,6 +625,7 @@ class AutoClickerApp(App):
         self.quick_panel = None
         self.torch_enabled = False
         self.wifi_enabled = False
+        self.status_poll_event = None
 
     def build(self):
         # Register the KV class rule, then instantiate the actual root widget.
@@ -751,12 +752,26 @@ class AutoClickerApp(App):
         try:
             from jnius import autoclass
             overlay = autoclass('com.george.autoclickerpro.FloatingOverlayService')
+            service = autoclass('com.george.autoclickerpro.AutoClickerAccessibilityService')
+            instance = service.getInstance()
             status = str(overlay.getVisionStatus())
-            if status and status != 'null':
+            if instance is not None:
+                count = int(instance.getSubmittedCommentCount())
+                enabled = bool(instance.isAutoPostingEnabled())
+                prefix = 'Auto-post ' + ('ON' if enabled else 'OFF') + ' • ' + str(count) + '/5 submitted'
+                self.ai_status_label.text = prefix + ((' • ' + status) if status and status != 'null' else '')
+            elif status and status != 'null':
                 self.ai_status_label.text = 'AI status: ' + status
         except Exception:
             pass
         return True
+
+    def _set_status_polling(self, enabled):
+        if enabled and self.status_poll_event is None:
+            self.status_poll_event = Clock.schedule_interval(self.refresh_ai_status, 1.0)
+        elif not enabled and self.status_poll_event is not None:
+            self.status_poll_event.cancel()
+            self.status_poll_event = None
 
     def toggle_native_feature(self, feature):
         try:
@@ -788,6 +803,24 @@ class AutoClickerApp(App):
             comments = max(0, int(self.min_comments_input.text or '10'))
             cooldown = max(15, min(86400, int(self.comment_cooldown_input.text or '60')))
             self._save_local_rule_defaults(likes, comments, cooldown)
+            try:
+                from jnius import autoclass
+                activity = autoclass('org.kivy.android.PythonActivity').mActivity
+                prefs = activity.getSharedPreferences('autoclicker_private', 0)
+                editor = prefs.edit()
+                editor.putInt('minimum_likes', likes)
+                editor.putInt('minimum_comments', comments)
+                editor.putInt('comment_cooldown_seconds', cooldown)
+                editor.putBoolean('metric_mode', self.metric_mode_toggle.state == 'down')
+                editor.putBoolean('auto_comment_suggestions', self.auto_comment_toggle.state == 'down')
+                editor.putString('reusable_comment', self.reusable_comment_input.text)
+                editor.putBoolean('template_comment_enabled', self.template_comment_toggle.state == 'down')
+                editor.putBoolean('auto_post_comments', self.auto_post_comments_toggle.state == 'down')
+                editor.putInt('max_comments_per_session', 5)
+                editor.apply()
+            except Exception:
+                pass
+            self._set_status_polling(self.auto_post_comments_toggle.state == 'down')
             service = self._native_accessibility()
             if service is None:
                 self.ai_status_label.text = 'Rules saved in app. Enable Accessibility to activate automation.'
@@ -848,6 +881,7 @@ class AutoClickerApp(App):
     def toggle_auto_post_comments(self):
         enabled = self.auto_post_comments_toggle.state == 'down'
         self.auto_post_comments_toggle.text = 'Auto-post: ' + ('ON' if enabled else 'OFF')
+        self._set_status_polling(enabled)
         self.save_automation_rules()
 
     def next_video(self):
@@ -951,6 +985,7 @@ class AutoClickerApp(App):
         self.metric_mode_toggle.text = 'Metric skip: ' + ('ON' if metric_mode else 'OFF')
         self.auto_comment_toggle.state = 'down' if auto_comments else 'normal'
         self.auto_comment_toggle.text = 'AI suggestions: ' + ('ON' if auto_comments else 'OFF')
+        self._set_status_polling(auto_post_enabled)
         self.show_status('Settings loaded')
 
     def show_status(self, message):
