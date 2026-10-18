@@ -32,7 +32,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private final ExecutorService aiExecutor = Executors.newSingleThreadExecutor();
     private volatile boolean autoNext = false, autoLike = false;
     private volatile boolean metricMode = false, autoCommentSuggestions = false, templateCommentEnabled = false;
-    private volatile boolean autoPostingEnabled = false, postingWorkflowBusy = false, commentSubmitScheduled = false;
+    private volatile boolean autoPostingEnabled = false, postingWorkflowBusy = false, commentSubmitScheduled = false, aiCommentReady = false;
     private volatile int maxCommentsPerSession = 5, submittedCommentCount = 0;
     private volatile long lastCommentPostedAt = 0L;
     private volatile String activePostingSignature = "", lastPostedSignature = "";
@@ -296,11 +296,24 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             final String finalSuggestion = suggestion;
             handler.post(() -> {
                 pendingComment = finalSuggestion;
+                aiCommentReady = true;
                 AccessibilityNodeInfo activeRoot = getRootInActiveWindow();
-                boolean filled = activeRoot != null && fillCommentComposer(activeRoot);
-                FloatingOverlayService.updateVisionStatus(filled
-                    ? (autoPostingEnabled && postingWorkflowBusy ? "AI comment filled • preparing submit" : "AI comment filled • review before posting")
-                    : "AI comment ready • open TikTok comment box to fill it");
+                if (autoPostingEnabled && postingWorkflowBusy) {
+                    if (activeRoot != null && hasCommentComposer(activeRoot)) {
+                        fillCommentComposer(activeRoot);
+                    } else if (activeRoot != null && clickCommentsButton(activeRoot)) {
+                        FloatingOverlayService.updateVisionStatus("AI comment ready • opening comments");
+                        handler.postDelayed(this::continueAutoComment, 900L);
+                    } else {
+                        FloatingOverlayService.updateVisionStatus("AI comment ready • could not locate comments control");
+                        resetPostingWorkflow("AI comment ready • workflow paused safely");
+                    }
+                } else {
+                    boolean filled = activeRoot != null && fillCommentComposer(activeRoot);
+                    FloatingOverlayService.updateVisionStatus(filled
+                        ? "AI comment filled • review before posting"
+                        : "AI comment ready • open TikTok comment box to fill it");
+                }
             });
         } catch (Exception e) {
             FloatingOverlayService.updateVisionStatus("AI request failed • check Internet and API key");
@@ -355,14 +368,16 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         activePostingSignature = signature;
         lastCommentSuggestionAt = System.currentTimeMillis();
         pendingComment = templateCommentEnabled ? reusableComment.trim() : "";
-        FloatingOverlayService.updateVisionStatus("Qualifying post • opening comments (" + (submittedCommentCount + 1) +
-            "/" + maxCommentsPerSession + ")");
-        if (hasCommentComposer(root)) {
-            continueAutoComment();
-        } else if (clickCommentsButton(root)) {
-            handler.postDelayed(this::continueAutoComment, 900L);
+        aiCommentReady = false;
+        FloatingOverlayService.updateVisionStatus("Qualifying post • " + (submittedCommentCount + 1) +
+            "/" + maxCommentsPerSession);
+        if (templateCommentEnabled) {
+            if (hasCommentComposer(root)) continueAutoComment();
+            else if (clickCommentsButton(root)) handler.postDelayed(this::continueAutoComment, 900L);
+            else resetPostingWorkflow("Could not locate comments control; skipped safely");
         } else {
-            resetPostingWorkflow("Could not locate the comments control; skipped safely");
+            // Capture the video before opening the comments sheet so Gemini sees the post, not the composer.
+            analyzeCurrentScreen();
         }
     }
 
@@ -373,13 +388,18 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
             resetPostingWorkflow("Posting paused: TikTok is no longer active");
             return;
         }
-        if (templateCommentEnabled && !reusableComment.trim().isEmpty()) {
-            pendingComment = reusableComment.trim();
-            if (!fillCommentComposer(root)) handler.postDelayed(this::continueAutoComment, 700L);
-        } else if (autoCommentSuggestions) {
+        if (!pendingComment.trim().isEmpty()) {
+            if (hasCommentComposer(root)) {
+                if (!fillCommentComposer(root)) handler.postDelayed(this::continueAutoComment, 700L);
+            } else if (clickCommentsButton(root)) {
+                handler.postDelayed(this::continueAutoComment, 900L);
+            } else {
+                handler.postDelayed(this::continueAutoComment, 700L);
+            }
+        } else if (autoCommentSuggestions && !aiCommentReady) {
             analyzeCurrentScreen();
         } else {
-            resetPostingWorkflow("Select a comment mode first");
+            resetPostingWorkflow("Comment text is unavailable; workflow stopped");
         }
     }
 
@@ -471,6 +491,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
     private void resetPostingWorkflow(String message) {
         postingWorkflowBusy = false;
         commentSubmitScheduled = false;
+        aiCommentReady = false;
         pendingComment = "";
         FloatingOverlayService.updateVisionStatus(message);
     }
@@ -484,6 +505,7 @@ public class AutoClickerAccessibilityService extends AccessibilityService {
         if (!enabled) {
             postingWorkflowBusy = false;
             commentSubmitScheduled = false;
+            aiCommentReady = false;
             pendingComment = "";
         } else {
             submittedCommentCount = 0;
