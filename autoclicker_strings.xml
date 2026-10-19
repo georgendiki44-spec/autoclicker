@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autoclicker_accessibility_description">Lets Auto Clicker Pro perform taps and swipes that you start from its floating controls, and read on-screen labels in TikTok for the optional feed helpers. It does nothing until you start an action, and volume keys stop it instantly.</string>
+</resources>
