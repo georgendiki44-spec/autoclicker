@@ -40,6 +40,19 @@ jobs:
             exit "$result"
           fi
 
+      - name: Verify accessibility service is packaged in APK
+        run: |
+          set -euo pipefail
+          apk="$(find bin -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$apk"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt 2>/dev/null | sort -V | tail -n 1)"
+          if [ -z "$AAPT" ]; then AAPT="$(command -v aapt || true)"; fi
+          test -n "$AAPT"
+          "$AAPT" dump xmltree "$apk" AndroidManifest.xml > apk-manifest.txt
+          grep -q 'com.george.autoclickerpro.AutoClickerAccessibilityService' apk-manifest.txt
+          grep -q 'android.accessibilityservice.AccessibilityService' apk-manifest.txt
+          echo "Accessibility service declaration verified in $apk"
+
       - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
