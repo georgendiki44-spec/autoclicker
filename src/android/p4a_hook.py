@@ -25,7 +25,7 @@ def before_apk_build(toolchain):
         closing = "</application>"
         if closing not in manifest:
             raise RuntimeError("Application element missing from generated manifest")
-        manifest = manifest.replace(closing, services + "\\n" + closing, 1)
+        manifest = manifest.replace(closing, services + "\n" + closing, 1)
 
     # Fail the build if the merged manifest still doesn't register the service.
     root = ET.fromstring(manifest)
