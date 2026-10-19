@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/autoclicker_accessibility_description"
+    android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRequestFilterKeyEvents|flagReportViewIds|flagIncludeNotImportantViews"
+    android:packageNames="com.zhiliaoapp.musically,com.ss.android.ugc.trill,com.zhiliaoapp.musically.go"
+    android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    android:canRequestFilterKeyEvents="true"
+    android:notificationTimeout="100" />
