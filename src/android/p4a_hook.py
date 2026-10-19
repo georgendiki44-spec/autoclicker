@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 
 def before_apk_build(toolchain):
     dist_dir = Path(toolchain._dist.dist_dir)
-    manifest_path = dist_dir / "src" / "main" / "AndroidManifest.xml"
+    manifest_path = dist_dir / "jni" / "SDL" / "android-project" / "app" / "src" / "main" / "AndroidManifest.xml"
     services_path = Path(__file__).resolve().parent / "services.xml"
     manifest = manifest_path.read_text(encoding="utf-8")
     services = services_path.read_text(encoding="utf-8").strip()
