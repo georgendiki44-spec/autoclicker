@@ -45,9 +45,14 @@ jobs:
           set -euo pipefail
           apk="$(find bin -maxdepth 1 -name '*.apk' -print -quit)"
           test -n "$apk"
-          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt 2>/dev/null | sort -V | tail -n 1)"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/.buildozer/android/platform/android-sdk}}"
+          AAPT="$(find "$SDK_ROOT" "$HOME/.buildozer" /opt/android-sdk /usr/lib/android-sdk -type f -name aapt 2>/dev/null | sort -V | tail -n 1)"
           if [ -z "$AAPT" ]; then AAPT="$(command -v aapt || true)"; fi
-          test -n "$AAPT"
+          if [ -z "$AAPT" ]; then
+            echo "ERROR: Android aapt tool was not found. SDK_ROOT=$SDK_ROOT"
+            find "$HOME/.buildozer/android/platform" -maxdepth 4 -type d 2>/dev/null | head -80 || true
+            exit 1
+          fi
           "$AAPT" dump xmltree "$apk" AndroidManifest.xml > apk-manifest.txt
           grep -q 'com.george.autoclickerpro.AutoClickerAccessibilityService' apk-manifest.txt
           grep -q 'android.accessibilityservice.AccessibilityService' apk-manifest.txt
