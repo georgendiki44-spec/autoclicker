@@ -43,8 +43,96 @@ jobs:
 
       - name: Prepare native manifest hook
         run: |
-          sed -i '/^android.extra_manifest_application_arguments = /d' buildozer.spec
-          grep -q '^p4a.hook = ' buildozer.spec || sed -i '/^p4a.branch = develop/a p4a.hook = src/android/p4a_hook.py' buildozer.spec
+          grep -q '^android.extra_manifest_application_arguments = src/android/extra_manifest_application_arguments.xml
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set +e
+          printf 'y\n' | buildozer -v android debug 2>&1 | tee buildozer-build.log
+          result=${PIPESTATUS[1]}
+          if [ "$result" -ne 0 ]; then
+            find .buildozer -path '*/dists/*/src/main/AndroidManifest.xml' -type f -exec sh -c 'echo "--- $1"; nl -ba "$1"; python3 -c "import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1]); print(\"Manifest XML valid\")" "$1" || true' sh {} \;
+            exit "$result"
+          fi
+
+      # No aapt needed: read the packed manifest strings directly.
+      - name: Verify accessibility service is packaged in APK
+        run: |
+          set -eu
+          apk="$(find bin -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$apk"
+          unzip -p "$apk" AndroidManifest.xml > AndroidManifest.bin
+          # Binary XML stores strings as UTF-8 or UTF-16, so check both
+          { strings -a AndroidManifest.bin; strings -a -e l AndroidManifest.bin; } > apk-manifest.txt
+          grep -q 'com.george.autoclickerpro.AutoClickerAccessibilityService' apk-manifest.txt
+          grep -q 'android.accessibilityservice.AccessibilityService' apk-manifest.txt
+          echo "Accessibility service declaration verified in $apk"
+
+      - name: Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-clicker-apk
+          path: ./bin/*.apk
+          if-no-files-found: error
+
+      - name: Upload diagnostics if build fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-clicker-build-diagnostics
+          path: |
+            buildozer-build.log
+            apk-manifest.txt
+            .buildozer/android/platform/build-*/dists/*/src/main/AndroidManifest.xml
+          if-no-files-found: warn
+ buildozer.spec
+          grep -q '^p4a.hook = src/android/p4a_hook.py
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set +e
+          printf 'y\n' | buildozer -v android debug 2>&1 | tee buildozer-build.log
+          result=${PIPESTATUS[1]}
+          if [ "$result" -ne 0 ]; then
+            find .buildozer -path '*/dists/*/src/main/AndroidManifest.xml' -type f -exec sh -c 'echo "--- $1"; nl -ba "$1"; python3 -c "import sys,xml.etree.ElementTree as E; E.parse(sys.argv[1]); print(\"Manifest XML valid\")" "$1" || true' sh {} \;
+            exit "$result"
+          fi
+
+      # No aapt needed: read the packed manifest strings directly.
+      - name: Verify accessibility service is packaged in APK
+        run: |
+          set -eu
+          apk="$(find bin -maxdepth 1 -name '*.apk' -print -quit)"
+          test -n "$apk"
+          unzip -p "$apk" AndroidManifest.xml > AndroidManifest.bin
+          # Binary XML stores strings as UTF-8 or UTF-16, so check both
+          { strings -a AndroidManifest.bin; strings -a -e l AndroidManifest.bin; } > apk-manifest.txt
+          grep -q 'com.george.autoclickerpro.AutoClickerAccessibilityService' apk-manifest.txt
+          grep -q 'android.accessibilityservice.AccessibilityService' apk-manifest.txt
+          echo "Accessibility service declaration verified in $apk"
+
+      - name: Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-clicker-apk
+          path: ./bin/*.apk
+          if-no-files-found: error
+
+      - name: Upload diagnostics if build fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-clicker-build-diagnostics
+          path: |
+            buildozer-build.log
+            apk-manifest.txt
+            .buildozer/android/platform/build-*/dists/*/src/main/AndroidManifest.xml
+          if-no-files-found: warn
+ buildozer.spec
 
       - name: Build APK
         shell: bash
