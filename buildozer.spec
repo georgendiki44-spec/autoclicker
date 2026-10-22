@@ -251,7 +251,6 @@ android.add_resources = src/android/res
 #android.manifest.intent_filters =
 
 # (list) Copy these files to src/main/res/xml/ (used for example with intent-filters)
-android.res_xml = src/android/res/xml/autoclicker_accessibility_service.xml
 
 # (str) launchMode to set for the main activity
 #android.manifest.launch_mode = standard
