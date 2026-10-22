@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autoclicker_accessibility_description">Allows Auto Clicker Pro to perform user-requested taps and gestures, read supported screen controls, and stop automation with the volume buttons.</string>
+</resources>
