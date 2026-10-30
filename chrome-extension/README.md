@@ -6,16 +6,16 @@ A Manifest V3 Chrome extension that helps prepare relevant TikTok comment drafts
 - Two exclusive modes: reusable comments or Gemini-generated drafts.
 - Checks detected likes and comment counts against user-configured minimums.
 - Inserts a reviewed draft into TikTok's comment editor.
-- Keeps a simple session counter that the user can update manually in a future version.
+- Manual posted-comment counter, capped at five marks per page session.
 
 ## Safety and posting
-This extension does **not** click TikTok's Post button, navigate through videos to post comments, or publish comments in the background. You review each draft and submit it yourself. TikTok's page structure changes often, so metric and comment-box detection may need selector updates.
+This extension does **not** click TikTok's Post button, navigate through videos to post comments, or publish comments in the background. You review each draft and submit it yourself, then use **I posted this comment** to update the counter. The counter is a manual record, not proof that TikTok accepted the comment. TikTok's page structure changes often, so metric and comment-box detection may need selector updates.
 
 ## Install
 1. Open `chrome://extensions`.
 2. Enable **Developer mode**.
 3. Select **Load unpacked**.
-4. Choose this `chrome-extension` folder.
+4. Choose this `chrome-extension` folder from the repository.
 5. Open TikTok in a tab and configure the extension from its toolbar icon.
 
 ## Gemini
