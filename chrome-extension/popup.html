@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TikTok Comment Assistant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header><div class="mark">TC</div><div><h1>Comment Assistant</h1><p>TikTok · Chrome extension</p></div></header>
+    <label for="mode">Comment mode</label>
+    <select id="mode"><option value="template">Reusable comment</option><option value="ai">AI-generated draft</option></select>
+    <section id="templateSection">
+      <label for="templates">Saved comments (one per line)</label>
+      <textarea id="templates" rows="5" placeholder="Add one reusable comment per line"></textarea>
+    </section>
+    <section id="aiSection" hidden>
+      <label for="apiKey">Gemini API key (stored locally in Chrome)</label>
+      <input id="apiKey" type="password" placeholder="Paste your API key">
+      <label for="tone">Tone / instruction</label>
+      <input id="tone" type="text" placeholder="Friendly, relevant, natural">
+      <p class="hint">AI requests may incur charges under your Google AI account. The key is not sent to our server.</p>
+    </section>
+    <label for="minLikes">Minimum likes required</label>
+    <input id="minLikes" type="number" min="0" value="0">
+    <label for="minComments">Minimum comments required</label>
+    <input id="minComments" type="number" min="0" value="0">
+    <button id="save">Save settings</button>
+    <p id="status" role="status"></p>
+    <p class="foot">Drafts only. You review and press TikTok's Post button yourself.</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
