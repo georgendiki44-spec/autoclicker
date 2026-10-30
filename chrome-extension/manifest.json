@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "TikTok Comment Assistant",
+  "version": "1.0.0",
+  "description": "Prepare reusable or AI-assisted TikTok comment drafts and insert them for manual review.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://www.tiktok.com/*", "https://generativelanguage.googleapis.com/*"],
+  "action": {
+    "default_title": "TikTok Comment Assistant",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [{
+    "matches": ["https://www.tiktok.com/*"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle"
+  }]
+}
